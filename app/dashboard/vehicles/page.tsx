@@ -30,18 +30,15 @@ export default function VehiclesPage() {
     useEffect(() => {
         const lowerQuery = searchQuery.toLowerCase();
         const filtered = vehicles.filter(v =>
-            v.name.toLowerCase().includes(lowerQuery) ||
-            v.plate.toLowerCase().includes(lowerQuery)
+            v.name.toLowerCase().includes(lowerQuery)
         );
         // Maintain mock sort order or standard
         setFilteredVehicles(filtered);
     }, [searchQuery, vehicles]);
 
-    const handleAddVehicle = async (data: { name: string; bodyType: string; year: number; subModel: string }) => {
-        await DashboardService.addVehicle(data);
-        // Refresh list
-        const updated = await DashboardService.getAllVehicles();
-        setVehicles(updated);
+    const handleAddVehicle = async () => {
+        // Refresh list after successful addition in the modal
+        await loadVehicles();
     };
 
     return (
@@ -64,7 +61,7 @@ export default function VehiclesPage() {
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                         <input
                             type="text"
-                            placeholder="Search by name or plate..."
+                            placeholder="Search by name..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="h-10 w-full rounded-xl bg-slate-800/50 pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all"

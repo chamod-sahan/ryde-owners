@@ -223,12 +223,11 @@ export const VehicleService = {
      * Register vehicle with simplified flow (auto-create if needed)
      */
     registerVehicleSimplified: async (
-        carOwnerId: number,
         request: VehicleRegistrationRequest
     ): Promise<ApiResponse<any>> => {
-        console.log(`🚗 Registering vehicle for owner: ${carOwnerId}`);
+        console.log("🚗 Registering vehicle (simplified)");
         return await apiClient.post<any>(
-            `/owner-vehicles/register-simplified?carOwnerId=${carOwnerId}`,
+            "/owner-vehicles/register-simplified",
             request
         );
     },

@@ -11,7 +11,7 @@ import { VehicleSearchResponse } from "@/types/api";
 interface AddVehicleModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onAdd: (data: { name: string; bodyType: string; year: number; subModel: string }) => Promise<void>;
+    onAdd: () => Promise<void>;
 }
 
 // Autocomplete Input Component
@@ -128,6 +128,8 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
     const [yearInput, setYearInput] = useState("");
     const [bodyType, setBodyType] = useState("");
     const [bodyTypeId, setBodyTypeId] = useState<number | null>(null);
+    const [dailyPrice, setDailyPrice] = useState<number>(5000);
+    const [location, setLocation] = useState("Colombo");
     const [loading, setLoading] = useState(false);
 
     // Search result state
@@ -241,16 +243,30 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
             console.log("📋 Search result:", result);
             setSearchResult(result);
 
-            // If vehicle found, auto-populate transmission, fuel type, etc.
-            if (result.available && result.transmissionId) {
-                setTransmissionId(result.transmissionId);
-                setTransmission(result.transmissionName || "");
-                setFuelTypeId(result.fuelTypeId || null);
-                setFuelType(result.fuelTypeName || "");
-                setDriveTypeId(result.driveTypeId || null);
-                setDriveType(result.driveTypeName || "");
+            // If vehicle found, auto-populate technical specs
+            if (result.available) {
+                if (result.transmissionId) {
+                    setTransmissionId(result.transmissionId);
+                    setTransmission(result.transmissionName || "");
+                }
+                if (result.fuelTypeId) {
+                    setFuelTypeId(result.fuelTypeId);
+                    setFuelType(result.fuelTypeName || "");
+                }
+                if (result.driveTypeId) {
+                    setDriveTypeId(result.driveTypeId);
+                    setDriveType(result.driveTypeName || "");
+                }
                 setSeats(result.seats || 5);
                 setDoors(result.doors || 4);
+            } else {
+                // If NOT found, clear manual inputs to let user choose
+                setTransmissionId(null);
+                setTransmission("");
+                setFuelTypeId(null);
+                setFuelType("");
+                setDriveTypeId(null);
+                setDriveType("");
             }
         } catch (error) {
             console.error("Failed to search vehicle specs:", error);
@@ -285,23 +301,64 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
         setDriveTypeId(null);
         setSeats(5);
         setDoors(4);
+        setDailyPrice(5000);
+        setLocation("Colombo");
     };
 
     if (!isOpen) return null;
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        if (!make || !model || !year || !bodyTypeId) return;
+
+        // Basic validation
+        if (!makeId || !modelId || !year || !bodyTypeId) {
+            console.warn("Validation failed: Missing required fields");
+            return;
+        }
+
+        // If vehicle NOT found, we need the manual inputs
+        if (!searchResult?.available && (!fuelTypeId || !transmissionId || !driveTypeId)) {
+            console.warn("Validation failed: Missing manual specs for new vehicle");
+            return;
+        }
 
         setLoading(true);
 
         try {
-            const name = `${year} ${make} ${model}`.trim();
-            await onAdd({ name, bodyType, year: year, subModel: "" });
-            resetForm();
-            onClose();
+            // Prepare registration request
+            const request = {
+                vehicleId: searchResult?.vehicleId,
+                makeId,
+                modelId,
+                year,
+                fuelTypeId: fuelTypeId || 0,
+                transmissionId: transmissionId || 0,
+                driveTypeId: driveTypeId || 0,
+                seats,
+                doors,
+                // userId is now handled by backend
+                bodyTypeId,
+                location,
+                pricePerDay: dailyPrice,
+                description: "Newly added vehicle"
+            };
+
+            console.log("🚀 Submitting simplified registration:", request);
+            const response = await VehicleService.registerVehicleSimplified(request as any);
+
+            if (response.success) {
+                console.log("✅ Vehicle registered successfully");
+                // Notify parent to refresh list
+                const name = `${year} ${make} ${model}`.trim();
+                await onAdd();
+                resetForm();
+                onClose();
+            } else {
+                throw new Error(response.message || "Registration failed");
+            }
         } catch (error) {
             console.error("Error in submit:", error);
+            alert("Failed to add vehicle. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -309,6 +366,9 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
 
     const vehicleFound = searchResult?.available === true;
     const vehicleNotFound = searchResult?.available === false;
+
+    // Use derived state for muted fields
+    const isMuted = vehicleFound && !isSearching;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
@@ -330,7 +390,7 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                             <span className="text-sm font-medium text-slate-300">Search Vehicle</span>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             {/* Make Input */}
                             <AutocompleteInput
                                 label="Make"
@@ -342,7 +402,7 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                                 }}
                                 options={makes}
                                 loading={makesLoading}
-                                placeholder="Type to search..."
+                                placeholder="Type..."
                                 required
                                 onSelect={(opt) => {
                                     setMake(opt.name);
@@ -362,7 +422,7 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                                 options={models}
                                 loading={modelsLoading}
                                 disabled={!make}
-                                placeholder={!make ? "Select make first" : "Type to search..."}
+                                placeholder={!make ? "Select make" : "Type..."}
                                 required
                                 onSelect={(opt) => {
                                     setModel(opt.name);
@@ -385,13 +445,31 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                                 }}
                                 options={years}
                                 disabled={!model}
-                                placeholder={!model ? "Select model first" : "Type year..."}
+                                placeholder={!model ? "Select model" : "Year..."}
                                 required
                                 onSelect={(opt) => {
                                     setYearInput(opt.name);
                                     setYear(opt.id);
                                 }}
                             />
+
+                            {/* Inline Add Button */}
+                            <div className="flex items-end pb-0.5">
+                                <Button
+                                    type="submit"
+                                    disabled={loading || isSearching || !searchResult || !bodyTypeId}
+                                    className="w-full h-11 bg-primary hover:bg-primary/90 text-white shadow-[0_0_20px_rgba(59,130,246,0.2)]"
+                                >
+                                    {loading ? (
+                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <Car className="w-4 h-4 mr-2" />
+                                            Add
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
                         </div>
                     </div>
 
@@ -403,83 +481,30 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                         </div>
                     )}
 
-                    {/* Vehicle Found - Show Specs */}
-                    {vehicleFound && !isSearching && (
-                        <div className="bg-emerald-500/10 rounded-xl border border-emerald-500/30 p-4 animate-in fade-in slide-in-from-top-4 duration-300">
+                    {/* Technical Specifications Section (Enabled/Disabled based on search) */}
+                    {(make && model && yearInput) && !isSearching && (
+                        <div className={cn(
+                            "rounded-xl border p-4 transition-all duration-300",
+                            isMuted ? "bg-emerald-500/5 border-emerald-500/20" : "bg-amber-500/5 border-amber-500/20"
+                        )}>
                             <div className="flex items-center gap-2 mb-4">
-                                <Check className="w-5 h-5 text-emerald-400" />
-                                <span className="text-emerald-400 font-semibold">Vehicle Found!</span>
+                                {isMuted ? (
+                                    <>
+                                        <Check className="w-5 h-5 text-emerald-400" />
+                                        <span className="text-emerald-400 font-semibold">Vehicle Specs Found</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <AlertCircle className="w-5 h-5 text-amber-400" />
+                                        <span className="text-amber-400 font-semibold">Manual Specification Entry</span>
+                                    </>
+                                )}
                             </div>
 
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                {/* Transmission */}
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2 text-slate-400 text-xs uppercase tracking-wider">
-                                        <Settings className="w-3 h-3" /> Transmission
-                                    </div>
-                                    <p className="text-white text-sm font-medium capitalize">
-                                        {searchResult?.transmissionName || "N/A"}
-                                    </p>
-                                </div>
-
                                 {/* Fuel Type */}
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2 text-slate-400 text-xs uppercase tracking-wider">
-                                        <Fuel className="w-3 h-3" /> Fuel Type
-                                    </div>
-                                    <p className="text-white text-sm font-medium">
-                                        {searchResult?.fuelTypeName || "N/A"}
-                                    </p>
-                                </div>
-
-                                {/* Drive Type */}
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2 text-slate-400 text-xs uppercase tracking-wider">
-                                        <Car className="w-3 h-3" /> Drive Type
-                                    </div>
-                                    <p className="text-white text-sm font-medium">
-                                        {searchResult?.driveTypeName || "N/A"}
-                                    </p>
-                                </div>
-
-                                {/* Seats */}
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2 text-slate-400 text-xs uppercase tracking-wider">
-                                        <Users className="w-3 h-3" /> Seats
-                                    </div>
-                                    <p className="text-white text-sm font-medium">
-                                        {searchResult?.seats || "N/A"}
-                                    </p>
-                                </div>
-
-                                {/* Doors */}
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2 text-slate-400 text-xs uppercase tracking-wider">
-                                        <Armchair className="w-3 h-3" /> Doors
-                                    </div>
-                                    <p className="text-white text-sm font-medium">
-                                        {searchResult?.doors || "N/A"}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Vehicle Not Found - Show Manual Input Form */}
-                    {vehicleNotFound && !isSearching && (
-                        <div className="bg-amber-500/10 rounded-xl border border-amber-500/30 p-4 animate-in fade-in slide-in-from-top-4 duration-300">
-                            <div className="flex items-center gap-2 mb-4">
-                                <AlertCircle className="w-5 h-5 text-amber-400" />
-                                <span className="text-amber-400 font-semibold">Vehicle Not Found - Add Details</span>
-                            </div>
-                            <p className="text-slate-400 text-sm mb-4">
-                                This vehicle doesn't exist in our database. Please provide the specifications below.
-                            </p>
-
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                {/* Fuel Type Select */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-300">Fuel Type</label>
+                                    <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Fuel Type</label>
                                     <select
                                         value={fuelTypeId || ""}
                                         onChange={(e) => {
@@ -487,19 +512,23 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                                             setFuelTypeId(id);
                                             setFuelType(fuelTypes.find(f => f.id === id)?.name || "");
                                         }}
-                                        className="w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all cursor-pointer"
+                                        disabled={isMuted}
+                                        className={cn(
+                                            "w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all cursor-pointer",
+                                            isMuted && "opacity-60 cursor-not-allowed bg-slate-900/50"
+                                        )}
                                         required
                                     >
-                                        <option value="" disabled>Select fuel type</option>
+                                        <option value="" disabled>Select</option>
                                         {fuelTypes.map((f) => (
                                             <option key={f.id} value={f.id}>{f.name}</option>
                                         ))}
                                     </select>
                                 </div>
 
-                                {/* Transmission Select */}
+                                {/* Transmission */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-300">Transmission</label>
+                                    <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Transmission</label>
                                     <select
                                         value={transmissionId || ""}
                                         onChange={(e) => {
@@ -507,19 +536,23 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                                             setTransmissionId(id);
                                             setTransmission(transmissions.find(t => t.id === id)?.name || "");
                                         }}
-                                        className="w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all cursor-pointer"
+                                        disabled={isMuted}
+                                        className={cn(
+                                            "w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all cursor-pointer",
+                                            isMuted && "opacity-60 cursor-not-allowed bg-slate-900/50"
+                                        )}
                                         required
                                     >
-                                        <option value="" disabled>Select transmission</option>
+                                        <option value="" disabled>Select</option>
                                         {transmissions.map((t) => (
                                             <option key={t.id} value={t.id}>{t.name}</option>
                                         ))}
                                     </select>
                                 </div>
 
-                                {/* Drive Type Select */}
+                                {/* Drive Type */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-300">Drive Type</label>
+                                    <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Drive Type</label>
                                     <select
                                         value={driveTypeId || ""}
                                         onChange={(e) => {
@@ -527,40 +560,52 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                                             setDriveTypeId(id);
                                             setDriveType(driveTypes.find(d => d.id === id)?.name || "");
                                         }}
-                                        className="w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all cursor-pointer"
+                                        disabled={isMuted}
+                                        className={cn(
+                                            "w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all cursor-pointer",
+                                            isMuted && "opacity-60 cursor-not-allowed bg-slate-900/50"
+                                        )}
                                         required
                                     >
-                                        <option value="" disabled>Select drive type</option>
+                                        <option value="" disabled>Select</option>
                                         {driveTypes.map((d) => (
                                             <option key={d.id} value={d.id}>{d.name}</option>
                                         ))}
                                     </select>
                                 </div>
 
-                                {/* Seats Input */}
+                                {/* Seats */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-300">Seats</label>
+                                    <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Seats</label>
                                     <input
                                         type="number"
                                         min="1"
                                         max="20"
                                         value={seats}
                                         onChange={(e) => setSeats(Number(e.target.value))}
-                                        className="w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all"
+                                        disabled={isMuted}
+                                        className={cn(
+                                            "w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all",
+                                            isMuted && "opacity-60 cursor-not-allowed bg-slate-900/50"
+                                        )}
                                         required
                                     />
                                 </div>
 
-                                {/* Doors Input */}
+                                {/* Doors */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-slate-300">Doors</label>
+                                    <label className="text-xs font-medium text-slate-400 uppercase tracking-wider">Doors</label>
                                     <input
                                         type="number"
                                         min="1"
                                         max="10"
                                         value={doors}
                                         onChange={(e) => setDoors(Number(e.target.value))}
-                                        className="w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all"
+                                        disabled={isMuted}
+                                        className={cn(
+                                            "w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all",
+                                            isMuted && "opacity-60 cursor-not-allowed bg-slate-900/50"
+                                        )}
                                         required
                                     />
                                 </div>
@@ -568,28 +613,41 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                         </div>
                     )}
 
-                    {/* Body Type - Always Show */}
+                    {/* Body Type & Ownership Data - Always Show */}
                     {(vehicleFound || vehicleNotFound) && !isSearching && (
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-slate-300">Body Type</label>
-                            <select
-                                value={bodyType}
-                                onChange={(e) => {
-                                    const selected = bodyTypes.find(bt => bt.name === e.target.value);
-                                    setBodyType(e.target.value);
-                                    setBodyTypeId(selected?.id || null);
-                                }}
-                                className="w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all cursor-pointer"
-                                required
-                                disabled={bodyTypesLoading}
-                            >
-                                <option value="" disabled>
-                                    {bodyTypesLoading ? "Loading body types..." : "Select a body type"}
-                                </option>
-                                {bodyTypes.map((bt) => (
-                                    <option key={bt.id} value={bt.name}>{bt.name}</option>
-                                ))}
-                            </select>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Body Type</label>
+                                <select
+                                    value={bodyType}
+                                    onChange={(e) => {
+                                        const selected = bodyTypes.find(bt => bt.name === e.target.value);
+                                        setBodyType(e.target.value);
+                                        setBodyTypeId(selected?.id || null);
+                                    }}
+                                    className="w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all cursor-pointer"
+                                    required
+                                    disabled={bodyTypesLoading}
+                                >
+                                    <option value="" disabled>
+                                        {bodyTypesLoading ? "Loading..." : "Select type"}
+                                    </option>
+                                    {bodyTypes.map((bt) => (
+                                        <option key={bt.id} value={bt.name}>{bt.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Daily Price (LKR)</label>
+                                <input
+                                    type="number"
+                                    value={dailyPrice}
+                                    onChange={(e) => setDailyPrice(Number(e.target.value))}
+                                    className="w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all font-mono"
+                                    required
+                                />
+                            </div>
                         </div>
                     )}
 
@@ -614,12 +672,12 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                             {loading ? (
                                 <>
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Adding...
+                                    Registering...
                                 </>
                             ) : (
                                 <>
                                     <Check className="w-4 h-4 mr-2" />
-                                    Add Vehicle
+                                    Register Vehicle
                                 </>
                             )}
                         </Button>

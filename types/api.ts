@@ -45,6 +45,7 @@ export interface AuthResponse {
         roles: string[];
         isActive: boolean;
         emailVerified: boolean;
+        logoUrl?: string;
     };
     accessToken: string;
     refreshToken: string;
@@ -65,7 +66,6 @@ export interface VerifyEmailRequest {
 // Vehicle Types
 export interface VehicleRequest {
     name: string;
-    plate: string;
     bodyType: string;
     fuel: string;
     transmission: string;
@@ -77,7 +77,6 @@ export interface VehicleRequest {
 export interface VehicleResponse {
     id: string;
     name: string;
-    plate: string;
     status: "Active" | "Rented" | "Maintenance";
     earnings: string;
     trips: number;
@@ -214,6 +213,39 @@ export interface UpdateProfileRequest {
     fullName?: string;
     phone?: string;
     bankDetails?: BankDetails;
+}
+
+export interface UserResponse {
+    id: number;
+    email: string;
+    firstName: string;
+    lastName: string;
+    roles: string[];
+    isActive: boolean;
+    emailVerified: boolean;
+    logoUrl?: string;
+    addresses?: CarOwnerAddressResponse[];
+}
+
+export interface CarOwnerAddressResponse {
+    id: number;
+    carOwnerId: number;
+    businessName: string;
+    addressType: string;
+    streetAddress: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+    latitude?: number;
+    longitude?: number;
+    isPrimary: boolean;
+    isActive: boolean;
+    contactPerson?: string;
+    phoneNumber?: string;
+    email?: string;
+    operatingHours?: string;
+    description?: string;
 }
 
 // Transaction Types
