@@ -11,7 +11,8 @@ async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<
 
     // Add Authorization header if token exists
     if (typeof window !== "undefined") {
-        const token = localStorage.getItem("accessToken");
+        const { TokenService } = require("./tokenService"); // Dynamic import to avoid circular dependency if any, or just import at top level
+        const token = TokenService.getAccessToken();
         if (token) {
             (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
         }
