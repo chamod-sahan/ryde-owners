@@ -17,12 +17,15 @@ export default function DashboardPage() {
     useEffect(() => {
         async function loadData() {
             try {
+
                 const [kpiData, vehicleData, bookingData] = await Promise.all([
                     DashboardService.getKPIs(),
+
+                const [vehicleData] = await Promise.all([
+
                     DashboardService.getTopVehicles(),
                     DashboardService.getRecentBookings(),
                 ]);
-                setKpis(kpiData || []);
                 setVehicles(vehicleData || []);
                 setRecentBookings(bookingData || []);
             } catch (error) {

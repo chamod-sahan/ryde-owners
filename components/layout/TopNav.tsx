@@ -3,6 +3,7 @@
 import React from "react";
 import { Bell, Search, Menu } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { TokenService } from "@/services/tokenService";
 
 import { AuthService } from "@/services/authService";
 import { ProfileService } from "@/services/profileService";
@@ -20,17 +21,17 @@ export function TopNav({ onMenuClick }: TopNavProps) {
         const fetchProfile = async () => {
             try {
                 // Try getting from local storage first for immediate display
-                const storedUser = localStorage.getItem("user");
+                const storedUser = TokenService.getUser();
                 if (storedUser) {
-                    setUser(JSON.parse(storedUser));
+                    setUser(storedUser);
                 }
 
                 // Verify with API
                 const response = await ProfileService.getProfile();
                 if (response.success) {
                     setUser(response.data);
-                    // Update local storage
-                    localStorage.setItem("user", JSON.stringify(response.data));
+                    // Update storage (preserve existing persistence preference)
+                    TokenService.setUser(response.data);
                 }
             } catch (error) {
                 // Backend might be having connectivity issues with the Auth Provider (502 Bad Gateway)
