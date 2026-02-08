@@ -5,14 +5,16 @@ import { Bell, Search, Menu } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 import { AuthService } from "@/services/authService";
-import { AuthResponse } from "@/types/api";
+import { ProfileService } from "@/services/profileService";
+import { AuthResponse, UserResponse } from "@/types/api";
+import Image from "next/image";
 
 interface TopNavProps {
     onMenuClick: () => void;
 }
 
 export function TopNav({ onMenuClick }: TopNavProps) {
-    const [user, setUser] = React.useState<AuthResponse["user"] | null>(null);
+    const [user, setUser] = React.useState<UserResponse | null>(null);
 
     React.useEffect(() => {
         const fetchProfile = async () => {
@@ -24,11 +26,11 @@ export function TopNav({ onMenuClick }: TopNavProps) {
                 }
 
                 // Verify with API
-                const response = await AuthService.getProfile();
+                const response = await ProfileService.getProfile();
                 if (response.success) {
-                    setUser(response.data.user);
+                    setUser(response.data);
                     // Update local storage
-                    localStorage.setItem("user", JSON.stringify(response.data.user));
+                    localStorage.setItem("user", JSON.stringify(response.data));
                 }
             } catch (error) {
                 // Backend might be having connectivity issues with the Auth Provider (502 Bad Gateway)
@@ -80,7 +82,21 @@ export function TopNav({ onMenuClick }: TopNavProps) {
                             {user && user.roles && user.roles.length > 0 ? user.roles[0].replace("ROLE_", "").replace("_", " ") : "Fleet Owner"}
                         </p>
                     </div>
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-blue-600 ring-2 ring-white/10" />
+                    <div className="h-10 w-10 overflow-hidden rounded-full bg-gradient-to-br from-primary to-blue-600 ring-2 ring-white/10">
+                        {user?.logoUrl ? (
+                            <Image
+                                src={user.logoUrl}
+                                alt="Profile"
+                                width={40}
+                                height={40}
+                                className="h-full w-full object-cover"
+                            />
+                        ) : (
+                            <div className="h-full w-full flex items-center justify-center text-white font-bold">
+                                {user?.firstName?.charAt(0)}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </header>

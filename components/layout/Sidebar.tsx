@@ -6,6 +6,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Car, Calendar, BarChart3, Settings, LogOut } from "lucide-react";
 import { AuthService } from "@/services/authService";
+import { ProfileService } from "@/services/profileService";
+import { UserResponse } from "@/types/api";
+import Image from "next/image";
 
 const NAV_ITEMS = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -22,6 +25,28 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
+    const [user, setUser] = React.useState<UserResponse | null>(null);
+
+    React.useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const storedUser = localStorage.getItem("user");
+                if (storedUser) {
+                    setUser(JSON.parse(storedUser));
+                }
+
+                const response = await ProfileService.getProfile();
+                if (response.success) {
+                    setUser(response.data);
+                    localStorage.setItem("user", JSON.stringify(response.data));
+                }
+            } catch (error) {
+                console.warn("Unable to fetch latest profile for sidebar:", error);
+            }
+        };
+
+        fetchProfile();
+    }, []);
 
     const handleLogout = async () => {
         try {
@@ -55,7 +80,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <div className="flex h-full flex-col p-6">
                     {/* Logo Area */}
                     <div className="mb-10 flex items-center gap-3 px-2">
-                        <div className="h-8 w-8 rounded-lg bg-primary shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+                        {user?.logoUrl ? (
+                            <div className="h-10 w-10 overflow-hidden rounded-lg ring-1 ring-white/10">
+                                <Image
+                                    src={user.logoUrl}
+                                    alt="Owner Logo"
+                                    width={40}
+                                    height={40}
+                                    className="h-full w-full object-cover"
+                                />
+                            </div>
+                        ) : (
+                            <div className="h-8 w-8 rounded-lg bg-primary shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+                        )}
                         <span className="text-xl font-bold tracking-tight text-white">Ryde<span className="text-primary">.Owner</span></span>
                     </div>
 

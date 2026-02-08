@@ -45,6 +45,7 @@ export interface AuthResponse {
         roles: string[];
         isActive: boolean;
         emailVerified: boolean;
+        logoUrl?: string;
     };
     accessToken: string;
     refreshToken: string;
@@ -65,7 +66,6 @@ export interface VerifyEmailRequest {
 // Vehicle Types
 export interface VehicleRequest {
     name: string;
-    plate: string;
     bodyType: string;
     fuel: string;
     transmission: string;
@@ -77,7 +77,6 @@ export interface VehicleRequest {
 export interface VehicleResponse {
     id: string;
     name: string;
-    plate: string;
     status: "Active" | "Rented" | "Maintenance";
     earnings: string;
     trips: number;
@@ -98,7 +97,65 @@ export interface UploadImageRequest {
     image: File;
 }
 
+// Vehicle Search Response (from /owner-vehicles/search-specs)
+export interface VehicleSearchResponse {
+    makeId: number;
+    makeName: string;
+    modelId: number;
+    modelName: string;
+    year: number;
+    available: boolean; // true if vehicle exists, false if not
+    // If vehicle exists (available = true)
+    vehicleId?: number;
+    fuelTypeId?: number;
+    fuelTypeName?: string;
+    transmissionId?: number;
+    transmissionName?: string;
+    driveTypeId?: number;
+    driveTypeName?: string;
+    seats?: number;
+    doors?: number;
+    colorImages?: VehicleColorImage[];
+    // If vehicle doesn't exist (available = false)
+    message?: string;
+}
+
+export interface VehicleColorImage {
+    colorId: number;
+    colorName: string;
+    colorCode: string;
+    thumbUrl: string;
+    imageUrl: string;
+}
+
+// Vehicle Registration Request (for /owner-vehicles/register-simplified)
+export interface VehicleRegistrationRequest {
+    // Vehicle identification
+    vehicleId?: number; // Optional: use existing vehicle
+    makeId: number;
+    modelId: number;
+    year: number;
+    // Vehicle specs (required if vehicle doesn't exist)
+    fuelTypeId: number;
+    transmissionId: number;
+    driveTypeId: number;
+    seats: number;
+    doors: number;
+    // Owner registration
+    userId: number;
+    bodyTypeId: number;
+    location: string;
+    pricePerDay: number;
+    pricePerHour?: number;
+    pricePerWeek?: number;
+    pricePerMonth?: number;
+    description?: string;
+    vehicleCount?: number;
+    features?: string[];
+}
+
 // Booking Types
+
 export interface BookingResponse {
     id: string;
     vehicleId: string;
@@ -156,6 +213,39 @@ export interface UpdateProfileRequest {
     fullName?: string;
     phone?: string;
     bankDetails?: BankDetails;
+}
+
+export interface UserResponse {
+    id: number;
+    email: string;
+    firstName: string;
+    lastName: string;
+    roles: string[];
+    isActive: boolean;
+    emailVerified: boolean;
+    logoUrl?: string;
+    addresses?: CarOwnerAddressResponse[];
+}
+
+export interface CarOwnerAddressResponse {
+    id: number;
+    carOwnerId: number;
+    businessName: string;
+    addressType: string;
+    streetAddress: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+    latitude?: number;
+    longitude?: number;
+    isPrimary: boolean;
+    isActive: boolean;
+    contactPerson?: string;
+    phoneNumber?: string;
+    email?: string;
+    operatingHours?: string;
+    description?: string;
 }
 
 // Transaction Types

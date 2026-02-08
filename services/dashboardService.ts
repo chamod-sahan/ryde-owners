@@ -6,7 +6,6 @@ import { TransactionService } from "./transactionService";
 export interface VehicleLegacy {
     id: string;
     name: string;
-    plate: string;
     status: "Active" | "Rented" | "Maintenance";
     earnings: string;
     trips: number;
@@ -20,7 +19,6 @@ export interface VehicleLegacy {
 export interface DashboardVehicle {
     id: string;
     name: string;
-    plate: string;
     status: "Active" | "Rented" | "Maintenance";
     earnings: string;
     trips: number;
@@ -83,7 +81,6 @@ export const DashboardService = {
                 return response.data.data.map(v => ({
                     id: v.id,
                     name: v.name,
-                    plate: v.plate,
                     status: v.status,
                     earnings: v.earnings,
                     trips: v.trips,
@@ -107,7 +104,6 @@ export const DashboardService = {
                 return response.data.data.map(v => ({
                     id: v.id,
                     name: v.name,
-                    plate: v.plate,
                     status: v.status,
                     earnings: v.earnings,
                     trips: v.trips,
@@ -190,30 +186,5 @@ export const DashboardService = {
             console.error("Failed to fetch transactions:", error);
         }
         return [];
-    },
-
-    addVehicle: async (vehicleData: any): Promise<any> => {
-        // This is a partial implementation just to satisfy the interface if it was used somewhere
-        // In a real app, you'd use VehicleService.createVehicle directly in the component
-        try {
-            // Add defaults for fields removed from UI
-            const payload = {
-                ...vehicleData,
-                plate: vehicleData.plate || `MOCK-${Math.floor(Math.random() * 10000)}`,
-                fuel: vehicleData.fuel || "Petrol",
-                transmission: vehicleData.transmission || "Automatic",
-                seats: vehicleData.seats || 5,
-                year: vehicleData.year,
-                subModel: vehicleData.subModel
-            };
-            const response = await VehicleService.createVehicle(payload);
-            if (response.success) {
-                return response.data;
-            }
-            throw new Error(response.message || "Failed to add vehicle");
-        } catch (error) {
-            console.error("Failed to add vehicle:", error);
-            throw error; // Re-throw for write operations so UI can show error
-        }
     }
 };

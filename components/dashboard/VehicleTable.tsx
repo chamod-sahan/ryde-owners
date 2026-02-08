@@ -37,8 +37,6 @@ export function VehicleTable({ vehicles }: VehicleTableProps) {
                                         <div>
                                             <p className="font-medium text-slate-200 group-hover:text-primary transition-colors">{vehicle.name}</p>
                                             <div className="flex items-center gap-2 mt-0.5">
-                                                <p className="text-xs text-slate-500">{vehicle.plate}</p>
-                                                <span className="text-xs text-slate-600">•</span>
                                                 <p className="text-xs text-slate-500">{vehicle.bodyType}</p>
                                                 <span className="text-xs text-slate-600">•</span>
                                                 <p className="text-xs text-slate-500">{vehicle.transmission}</p>
