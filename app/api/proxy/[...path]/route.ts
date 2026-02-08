@@ -14,7 +14,26 @@ async function handler(req: NextRequest, { params }: { params: { path: string[] 
 
     // 1. Rate Limiting
     const ip = req.headers.get("x-forwarded-for") || "unknown";
-    const limit = await rateLimit(ip);
+
+    // Try to get user ID from token
+    let identifier = `ip:${ip}`;
+    const authHeader = req.headers.get("authorization");
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+        try {
+            const token = authHeader.split(" ")[1];
+            // Simple decode without verification (backend verifies signature)
+            // Payload is the second part of the JWT
+            const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+            if (payload.sub || payload.id) {
+                identifier = `user:${payload.sub || payload.id}`;
+            }
+        } catch (e) {
+            // If token invalid, fall back to IP
+        }
+    }
+
+    const limit = await rateLimit(identifier);
 
     if (!limit.success) {
         return NextResponse.json(

@@ -24,11 +24,7 @@ export default function LoginPage() {
             });
 
             if (response.success) {
-                // Store tokens if needed, or rely on cookies if the API sets them. 
-                // For now, assuming standard JWT flow, we might need to store it.
-                // However, without a robust state management or cookie logic shown in the limited context,
-                // I will just redirect on success. The AuthService typically handles token storage if designed that way, 
-                // but here it just returns data. I'll add a comment about token storage.
+                
                 if (response.data.accessToken) {
                     localStorage.setItem('accessToken', response.data.accessToken);
                     localStorage.setItem('refreshToken', response.data.refreshToken);
