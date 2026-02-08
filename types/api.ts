@@ -98,7 +98,65 @@ export interface UploadImageRequest {
     image: File;
 }
 
+// Vehicle Search Response (from /owner-vehicles/search-specs)
+export interface VehicleSearchResponse {
+    makeId: number;
+    makeName: string;
+    modelId: number;
+    modelName: string;
+    year: number;
+    available: boolean; // true if vehicle exists, false if not
+    // If vehicle exists (available = true)
+    vehicleId?: number;
+    fuelTypeId?: number;
+    fuelTypeName?: string;
+    transmissionId?: number;
+    transmissionName?: string;
+    driveTypeId?: number;
+    driveTypeName?: string;
+    seats?: number;
+    doors?: number;
+    colorImages?: VehicleColorImage[];
+    // If vehicle doesn't exist (available = false)
+    message?: string;
+}
+
+export interface VehicleColorImage {
+    colorId: number;
+    colorName: string;
+    colorCode: string;
+    thumbUrl: string;
+    imageUrl: string;
+}
+
+// Vehicle Registration Request (for /owner-vehicles/register-simplified)
+export interface VehicleRegistrationRequest {
+    // Vehicle identification
+    vehicleId?: number; // Optional: use existing vehicle
+    makeId: number;
+    modelId: number;
+    year: number;
+    // Vehicle specs (required if vehicle doesn't exist)
+    fuelTypeId: number;
+    transmissionId: number;
+    driveTypeId: number;
+    seats: number;
+    doors: number;
+    // Owner registration
+    userId: number;
+    bodyTypeId: number;
+    location: string;
+    pricePerDay: number;
+    pricePerHour?: number;
+    pricePerWeek?: number;
+    pricePerMonth?: number;
+    description?: string;
+    vehicleCount?: number;
+    features?: string[];
+}
+
 // Booking Types
+
 export interface BookingResponse {
     id: string;
     vehicleId: string;
