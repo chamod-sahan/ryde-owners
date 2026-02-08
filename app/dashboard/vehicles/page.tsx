@@ -7,13 +7,16 @@ import { VehicleTable } from "@/components/dashboard/VehicleTable";
 import { DashboardService, DashboardVehicle } from "@/services/dashboardService";
 import { Search, Filter, Plus } from "lucide-react";
 import { AddVehicleModal } from "@/components/dashboard/AddVehicleModal";
+import { EditVehicleModal } from "@/components/dashboard/EditVehicleModal";
 
 export default function VehiclesPage() {
     const [vehicles, setVehicles] = useState<DashboardVehicle[]>([]);
     const [loading, setLoading] = useState(true);
     const [filteredVehicles, setFilteredVehicles] = useState<DashboardVehicle[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedVehicle, setSelectedVehicle] = useState<DashboardVehicle | null>(null);
 
     useEffect(() => {
         loadVehicles();
@@ -32,12 +35,19 @@ export default function VehiclesPage() {
         const filtered = vehicles.filter(v =>
             v.name.toLowerCase().includes(lowerQuery)
         );
-        // Maintain mock sort order or standard
         setFilteredVehicles(filtered);
     }, [searchQuery, vehicles]);
 
     const handleAddVehicle = async () => {
-        // Refresh list after successful addition in the modal
+        await loadVehicles();
+    };
+
+    const handleEditVehicle = (vehicle: DashboardVehicle) => {
+        setSelectedVehicle(vehicle);
+        setIsEditModalOpen(true);
+    };
+
+    const handleUpdateVehicle = async () => {
         await loadVehicles();
     };
 
@@ -48,14 +58,13 @@ export default function VehiclesPage() {
                     <h1 className="text-3xl font-bold text-white tracking-tight">Vehicles</h1>
                     <p className="text-slate-400 mt-1">Manage your fleet, track earnings, and update status.</p>
                 </div>
-                <Button onClick={() => setIsModalOpen(true)}>
+                <Button onClick={() => setIsAddModalOpen(true)}>
                     <Plus className="mr-2 h-4 w-4" />
                     Add Vehicle
                 </Button>
             </div>
 
             <GlassCard className="p-4 sm:p-6">
-                {/* Toolbar */}
                 <div className="flex flex-col md:flex-row gap-4 mb-6">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
@@ -76,14 +85,24 @@ export default function VehiclesPage() {
                 {loading ? (
                     <div className="py-12 text-center text-slate-500">Loading fleet data...</div>
                 ) : (
-                    <VehicleTable vehicles={filteredVehicles} />
+                    <VehicleTable
+                        vehicles={filteredVehicles}
+                        onEdit={handleEditVehicle}
+                    />
                 )}
             </GlassCard>
 
             <AddVehicleModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                isOpen={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
                 onAdd={handleAddVehicle}
+            />
+
+            <EditVehicleModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                vehicle={selectedVehicle}
+                onUpdate={handleUpdateVehicle}
             />
         </div>
     );

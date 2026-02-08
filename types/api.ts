@@ -92,6 +92,43 @@ export interface VehicleResponse {
     updatedAt: string;
 }
 
+export interface CarOwnerVehicleResponse {
+    id: number;
+    carOwnerId: number;
+    vehicleId: number;
+    make: string;
+    model: string;
+    year: number;
+    bodyTypeName: string;
+    bodyTypeCode: string;
+    colorName?: string;
+    colorCode?: string;
+    transmission: string;
+    fuelType: string;
+    driveType: string;
+    seats: number;
+    doors: number;
+    dailyRentalPrice: number;
+    weeklyRentalPrice?: number;
+    monthlyRentalPrice?: number;
+    dailyPriceWithCommission: number;
+    weeklyPriceWithCommission?: number;
+    monthlyPriceWithCommission?: number;
+    location: string;
+    description?: string;
+    availabilityStatus: string;
+    availableFrom?: string;
+    availableUntil?: string;
+    vehicleCount: number;
+    totalRentals: number;
+    averageRating: number;
+    totalEarnings: number;
+    isActive: boolean;
+    features?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface UploadImageRequest {
     vehicleId: string;
     image: File;
@@ -142,7 +179,7 @@ export interface VehicleRegistrationRequest {
     seats: number;
     doors: number;
     // Owner registration
-    userId: number;
+    userId?: number;
     bodyTypeId: number;
     location: string;
     pricePerDay: number;
@@ -152,6 +189,26 @@ export interface VehicleRegistrationRequest {
     description?: string;
     vehicleCount?: number;
     features?: string[];
+    availabilityStatus?: string;
+    availableFrom?: string;
+    availableUntil?: string;
+    deliveryFee?: number;
+}
+
+export interface UpdateVehicleRequest {
+    dailyRentalPrice?: number;
+    hourlyRentalPrice?: number;
+    weeklyRentalPrice?: number;
+    monthlyRentalPrice?: number;
+    location?: string;
+    description?: string;
+    availabilityStatus?: string;
+    availableFrom?: string;
+    availableUntil?: string;
+    vehicleCount?: number;
+    deliveryFee?: number;
+    features?: string[];
+    isActive?: boolean;
 }
 
 // Booking Types
