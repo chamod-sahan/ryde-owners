@@ -6,13 +6,14 @@ import { DashboardVehicle } from "@/services/dashboardService";
 
 interface VehicleTableProps {
     vehicles: DashboardVehicle[];
+    onEdit?: (vehicle: DashboardVehicle) => void;
 }
 
-export function VehicleTable({ vehicles }: VehicleTableProps) {
+export function VehicleTable({ vehicles, onEdit }: VehicleTableProps) {
     return (
         <GlassCard className="p-6">
             <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-semibold text-white">Top Performing Vehicles</h3>
+                <h3 className="text-lg font-semibold text-white">Your Fleet</h3>
                 <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">View All</Button>
             </div>
 
@@ -63,9 +64,16 @@ export function VehicleTable({ vehicles }: VehicleTableProps) {
                                 </td>
                                 <td className="py-4 text-right pr-2 font-medium text-white">{vehicle.earnings}</td>
                                 <td className="py-4 text-right">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-white">
-                                        <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
+                                    <div className="flex items-center justify-end gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 text-primary hover:bg-primary/10"
+                                            onClick={() => onEdit?.(vehicle)}
+                                        >
+                                            Edit
+                                        </Button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}

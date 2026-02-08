@@ -6,7 +6,8 @@ import {
     PaginatedResponse,
     QueryParams,
     VehicleSearchResponse,
-    VehicleRegistrationRequest
+    VehicleRegistrationRequest,
+    UpdateVehicleRequest
 } from "@/types/api";
 
 /**
@@ -28,6 +29,14 @@ export const VehicleService = {
             message: "Vehicles fetched",
             data: response.data || response
         } as ApiResponse<PaginatedResponse<VehicleResponse>>;
+    },
+
+    /**
+     * Get vehicles for the authenticated owner
+     */
+    getMyVehicles: async (): Promise<ApiResponse<any>> => {
+        console.log("🚗 Fetching my vehicles from API...");
+        return await apiClient.get<any>("/owner-vehicles/my-vehicles");
     },
 
     /**
@@ -68,6 +77,14 @@ export const VehicleService = {
     },
 
     /**
+     * Unified update for an owner's vehicle instance
+     */
+    updateOwnerVehicle: async (id: number | string, data: UpdateVehicleRequest): Promise<ApiResponse<any>> => {
+        console.log(`🚗 Updating owner vehicle ${id} with unified request...`);
+        return await apiClient.put<any>(`/owner-vehicles/${id}`, data);
+    },
+
+    /**
      * Delete a vehicle
      */
     deleteVehicle: async (id: string): Promise<ApiResponse<void>> => {
@@ -97,7 +114,7 @@ export const VehicleService = {
         console.log("🚗 Fetching body types from API...");
         try {
             // Try body-types endpoint
-            const response = await apiClient.get<any>("/body-types");
+            const response = await apiClient.get<any>("/vehicles/comprehensive/body-types");
             const data = Array.isArray(response) ? response : (response.data || []);
             console.log(`✅ Fetched ${data.length} body types`);
             return data.map((bt: any) => ({
@@ -226,11 +243,30 @@ export const VehicleService = {
         request: VehicleRegistrationRequest
     ): Promise<ApiResponse<any>> => {
         console.log("🚗 Registering vehicle (simplified)");
-        return await apiClient.post<any>(
-            "/owner-vehicles/register-simplified",
-            request
-        );
+        try {
+            const response = await apiClient.post<any>(
+                "/owner-vehicles/register-simplified",
+                request
+            );
+            const data = (response as any).data || response;
+            console.log("✅ Registration response:", data);
+            return {
+                success: true,
+                message: "Vehicle registered successfully",
+                data: data
+            };
+        } catch (error: any) {
+            console.error("❌ Registration failed:", error);
+            return {
+                success: false,
+                message: error.message || "Registration failed",
+                data: null
+            };
+        }
     },
+
+
+
 
     /**
      * Get fuel types from API

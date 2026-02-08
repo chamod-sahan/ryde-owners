@@ -71,10 +71,13 @@ export function useTokenRefresh() {
 
         console.log("🔄 Token refresh interval started (every 15 minutes)");
 
-        // Listen for unauthorized events (401) to trigger immediate refresh
+        // Listen for unauthorized events (401 + refresh failed) to redirect to login
         const handleUnauthorized = () => {
-            console.log("🔒 Received auth:unauthorized event, triggering immediate refresh...");
-            refreshAccessToken();
+            console.log("🔒 Received auth:unauthorized event. Refresh failed or no token. Redirecting to login...");
+            localStorage.removeItem("accessToken");
+            localStorage.removeItem("refreshToken");
+            localStorage.removeItem("user");
+            router.push("/login");
         };
 
         window.addEventListener("auth:unauthorized", handleUnauthorized);

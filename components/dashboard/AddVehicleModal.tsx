@@ -128,8 +128,14 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
     const [yearInput, setYearInput] = useState("");
     const [bodyType, setBodyType] = useState("");
     const [bodyTypeId, setBodyTypeId] = useState<number | null>(null);
-    const [dailyPrice, setDailyPrice] = useState<number>(5000);
+    const [dailyPrice, setDailyPrice] = useState<number>(50);
+    const [weeklyPrice, setWeeklyPrice] = useState<number>(300);
+    const [monthlyPrice, setMonthlyPrice] = useState<number>(1000);
     const [location, setLocation] = useState("Colombo");
+    const [description, setDescription] = useState("Newly added vehicle");
+    const [availableFrom, setAvailableFrom] = useState<string>("");
+    const [availableUntil, setAvailableUntil] = useState<string>("");
+    const [deliveryFee, setDeliveryFee] = useState<number>(0);
     const [loading, setLoading] = useState(false);
 
     // Search result state
@@ -212,7 +218,9 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
             try {
                 console.log(`🚗 Fetching models for ${make} (id: ${makeId})`);
                 const data = await VehicleService.getModels(make, makeId);
-                setModels(data);
+                // Deduplicate models by name - Backend will resolve correct year-specific ID
+                const uniqueModels = Array.from(new Map(data.map(m => [m.name, m])).values());
+                setModels(uniqueModels);
             } catch (error) {
                 console.error("Failed to fetch models:", error);
             } finally {
@@ -270,6 +278,8 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
             }
         } catch (error) {
             console.error("Failed to search vehicle specs:", error);
+            // On error, let user input specs manually
+            setSearchResult({ available: false, message: "Could not fetch specs. Please enter manually." } as any);
         } finally {
             setIsSearching(false);
         }
@@ -301,8 +311,14 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
         setDriveTypeId(null);
         setSeats(5);
         setDoors(4);
-        setDailyPrice(5000);
+        setDailyPrice(50);
+        setWeeklyPrice(300);
+        setMonthlyPrice(1000);
         setLocation("Colombo");
+        setDescription("Newly added vehicle");
+        setAvailableFrom("");
+        setAvailableUntil("");
+        setDeliveryFee(0);
     };
 
     if (!isOpen) return null;
@@ -340,11 +356,16 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                 bodyTypeId,
                 location,
                 pricePerDay: dailyPrice,
-                description: "Newly added vehicle"
+                pricePerWeek: weeklyPrice,
+                pricePerMonth: monthlyPrice,
+                description,
+                availableFrom: availableFrom || undefined,
+                availableUntil: availableUntil || undefined,
+                deliveryFee: deliveryFee
             };
 
             console.log("🚀 Submitting simplified registration:", request);
-            const response = await VehicleService.registerVehicleSimplified(request as any);
+            const response = await VehicleService.registerVehicleSimplified(request);
 
             if (response.success) {
                 console.log("✅ Vehicle registered successfully");
@@ -613,9 +634,9 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                         </div>
                     )}
 
-                    {/* Body Type & Ownership Data - Always Show */}
-                    {(vehicleFound || vehicleNotFound) && !isSearching && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Body Type & Pricing - Show as soon as vehicle is selected */}
+                    {(make && model && yearInput) && !isSearching && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-slate-300">Body Type</label>
                                 <select
@@ -639,13 +660,89 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-300">Daily Price (LKR)</label>
+                                <label className="text-sm font-medium text-slate-300">Daily Price ($)</label>
                                 <input
                                     type="number"
                                     value={dailyPrice}
                                     onChange={(e) => setDailyPrice(Number(e.target.value))}
                                     className="w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all font-mono"
                                     required
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Weekly Price ($)</label>
+                                <input
+                                    type="number"
+                                    value={weeklyPrice}
+                                    onChange={(e) => setWeeklyPrice(Number(e.target.value))}
+                                    className="w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all font-mono"
+                                    required
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Monthly Price ($)</label>
+                                <input
+                                    type="number"
+                                    value={monthlyPrice}
+                                    onChange={(e) => setMonthlyPrice(Number(e.target.value))}
+                                    className="w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all font-mono"
+                                    required
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Available From</label>
+                                <input
+                                    type="date"
+                                    value={availableFrom}
+                                    onChange={(e) => setAvailableFrom(e.target.value)}
+                                    className="w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Available Until</label>
+                                <input
+                                    type="date"
+                                    value={availableUntil}
+                                    onChange={(e) => setAvailableUntil(e.target.value)}
+                                    min={availableFrom}
+                                    className="w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-slate-300">Delivery Fee ($)</label>
+                                <input
+                                    type="number"
+                                    value={deliveryFee}
+                                    onChange={(e) => setDeliveryFee(Number(e.target.value))}
+                                    className="w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all font-mono"
+                                    placeholder="Static delivery charge"
+                                />
+                            </div>
+
+                            <div className="space-y-2 col-span-1 md:col-span-3">
+                                <label className="text-sm font-medium text-slate-300">Location / Pick-up Point</label>
+                                <input
+                                    type="text"
+                                    value={location}
+                                    onChange={(e) => setLocation(e.target.value)}
+                                    className="w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all"
+                                    placeholder="e.g. Colombo, Airport, etc."
+                                    required
+                                />
+                            </div>
+
+                            <div className="space-y-2 col-span-1 md:col-span-3">
+                                <label className="text-sm font-medium text-slate-300">Description</label>
+                                <textarea
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    className="w-full h-11 rounded-xl bg-slate-800/50 px-4 py-2 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all resize-none"
+                                    placeholder="Brief description of the vehicle"
                                 />
                             </div>
                         </div>
@@ -666,7 +763,7 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                         </Button>
                         <Button
                             type="submit"
-                            disabled={loading || isSearching || !searchResult || !bodyTypeId}
+                            disabled={loading || isSearching || !bodyTypeId || !makeId || !modelId || !year}
                             className="flex-1"
                         >
                             {loading ? (

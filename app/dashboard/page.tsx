@@ -11,17 +11,20 @@ import { DashboardService, KPI, DashboardVehicle } from "@/services/dashboardSer
 export default function DashboardPage() {
     const [kpis, setKpis] = useState<KPI[]>([]);
     const [vehicles, setVehicles] = useState<DashboardVehicle[]>([]);
+    const [recentBookings, setRecentBookings] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function loadData() {
             try {
-                const [kpiData, vehicleData] = await Promise.all([
+                const [kpiData, vehicleData, bookingData] = await Promise.all([
                     DashboardService.getKPIs(),
                     DashboardService.getTopVehicles(),
+                    DashboardService.getRecentBookings(),
                 ]);
                 setKpis(kpiData || []);
                 setVehicles(vehicleData || []);
+                setRecentBookings(bookingData || []);
             } catch (error) {
                 console.error("Failed to load dashboard data:", error);
             } finally {
@@ -94,17 +97,29 @@ export default function DashboardPage() {
                     <GlassCard className="p-4 sm:p-6">
                         <h3 className="text-lg font-semibold text-white mb-4">Recent Bookings</h3>
                         <div className="space-y-4">
-                            {[1, 2, 3].map((i) => (
-                                <div key={i} className="flex items-start gap-4 p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
-                                    <div className="h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
-                                        <CalendarCheck className="h-5 w-5" />
+                            {recentBookings.length > 0 ? (
+                                recentBookings.map((booking) => (
+                                    <div key={booking.id} className="flex items-start gap-4 p-3 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
+                                        <div className="h-10 w-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                                            <CalendarCheck className="h-5 w-5" />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="text-sm font-medium text-slate-200 truncate">{booking.car}</h4>
+                                            <div className="flex items-center justify-between gap-2 mt-0.5">
+                                                <p className="text-xs text-slate-500">{booking.time} • {booking.user}</p>
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${booking.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500' :
+                                                        booking.status === 'ACCEPTED' ? 'bg-emerald-500/10 text-emerald-500' :
+                                                            'bg-blue-500/10 text-blue-500'
+                                                    }`}>
+                                                    {booking.status}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h4 className="text-sm font-medium text-slate-200">BMW 330i Rented</h4>
-                                        <p className="text-xs text-slate-500 mt-0.5">Today, 10:23 AM • John Doe</p>
-                                    </div>
-                                </div>
-                            ))}
+                                ))
+                            ) : (
+                                <div className="py-8 text-center text-slate-500 text-sm">No recent bookings</div>
+                            )}
                         </div>
                         <Button variant="ghost" className="w-full mt-4 text-slate-400 hover:text-white">View All Bookings</Button>
                     </GlassCard>

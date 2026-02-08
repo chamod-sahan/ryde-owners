@@ -2,29 +2,100 @@ import { ApiResponse } from "@/types/api";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
+let isRefreshing = false;
+let refreshQueue: ((token: string) => void)[] = [];
+
 async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = endpoint.startsWith("http") ? endpoint : `${BASE_URL.replace(/\/$/, "")}/${endpoint.replace(/^\//, "")}`;
 
-    const headers: HeadersInit = {
-        ...options.headers,
+    // Helper to get headers with current token
+    const getHeaders = () => {
+        const headers: HeadersInit = { ...options.headers };
+        if (typeof window !== "undefined") {
+            const token = localStorage.getItem("accessToken");
+            if (token) {
+                (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+            }
+        }
+        if (!(options.body instanceof FormData)) {
+            (headers as Record<string, string>)["Content-Type"] = "application/json";
+        }
+        return headers;
     };
 
-    // Add Authorization header if token exists
-    if (typeof window !== "undefined") {
-        const token = localStorage.getItem("accessToken");
-        if (token) {
-            (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+    let response = await fetch(url, {
+        ...options,
+        headers: getHeaders(),
+    });
+
+    // Handle 401 Unauthorized (Token expired)
+    if (response.status === 401 && !endpoint.includes("/auth/refresh")) {
+        console.warn(`🔒 Received 401 Unauthorized for ${endpoint}. Attempting token refresh...`);
+
+        if (!isRefreshing) {
+            isRefreshing = true;
+            const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
+
+            if (refreshToken) {
+                try {
+                    // Try to refresh token
+                    const refreshUrl = `${BASE_URL.replace(/\/$/, "")}/api/auth/refresh?refreshToken=${refreshToken}`;
+                    const refreshResponse = await fetch(refreshUrl, { method: "POST" });
+
+                    if (refreshResponse.ok) {
+                        const refreshData = await refreshResponse.json();
+                        const newAccessToken = refreshData.accessToken || refreshData.data?.accessToken;
+                        const newRefreshToken = refreshData.refreshToken || refreshData.data?.refreshToken;
+
+                        if (newAccessToken && typeof window !== "undefined") {
+                            localStorage.setItem("accessToken", newAccessToken);
+                            if (newRefreshToken) localStorage.setItem("refreshToken", newRefreshToken);
+
+                            console.log("✅ Token refreshed successfully. Retrying queued requests.");
+
+                            // Process queued requests
+                            refreshQueue.forEach(callback => callback(newAccessToken));
+                            refreshQueue = [];
+                            isRefreshing = false;
+
+                            // Retry current request
+                            response = await fetch(url, {
+                                ...options,
+                                headers: getHeaders(),
+                            });
+                        } else {
+                            throw new Error("Invalid refresh response");
+                        }
+                    } else {
+                        throw new Error("Refresh failed");
+                    }
+                } catch (error) {
+                    console.error("❌ Token refresh failed:", error);
+                    isRefreshing = false;
+                    refreshQueue = [];
+                    if (typeof window !== "undefined") {
+                        localStorage.removeItem("accessToken");
+                        localStorage.removeItem("refreshToken");
+                        window.dispatchEvent(new CustomEvent("auth:unauthorized"));
+                    }
+                    throw new Error("Session expired. Please login again.");
+                }
+            } else {
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(new CustomEvent("auth:unauthorized"));
+                }
+                throw new Error("Unauthorized");
+            }
+        } else {
+            // Wait for refresh to complete
+            console.log(`⏳ Refresh in progress. Queuing request for ${endpoint}`);
+            return new Promise<ApiResponse<T>>((resolve) => {
+                refreshQueue.push((newToken: string) => {
+                    resolve(fetcher<T>(endpoint, options));
+                });
+            });
         }
     }
-
-    if (!(options.body instanceof FormData)) {
-        (headers as Record<string, string>)["Content-Type"] = "application/json";
-    }
-
-    const response = await fetch(url, {
-        ...options,
-        headers,
-    });
 
     // Handle empty responses (e.g., 204 No Content, or empty body)
     const text = await response.text();
@@ -59,23 +130,14 @@ async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<
     }
 
     if (!response.ok) {
-        if (response.status === 401) {
-            console.warn("🔒 Received 401 Unauthorized, dispatching auth:unauthorized event");
-            if (typeof window !== "undefined") {
-                window.dispatchEvent(new CustomEvent("auth:unauthorized"));
-            }
-        }
         const errorMessage = data?.message || "An error occurred";
         console.error(`❌ API Error [${response.status}] ${url}:`, errorMessage);
         throw new Error(`${errorMessage} (Status: ${response.status})`);
     }
 
-    // Normalize response: if 'data' doesn't exist but we have success/message mixed with payload
+    // Normalize response
     if (data.success && !data.data) {
-        // Create a copy to avoid circular refs if any, though unlikely in JSON
         const { success, message, ...payload } = data;
-        // If payload is empty, maybe void? But for auth it has user/token.
-        // We wrap it so existing code using response.data works.
         return {
             success,
             message,
