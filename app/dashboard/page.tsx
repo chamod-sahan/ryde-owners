@@ -16,11 +16,9 @@ export default function DashboardPage() {
     useEffect(() => {
         async function loadData() {
             try {
-                const [kpiData, vehicleData] = await Promise.all([
-                    DashboardService.getKPIs(),
+                const [vehicleData] = await Promise.all([
                     DashboardService.getTopVehicles(),
                 ]);
-                setKpis(kpiData || []);
                 setVehicles(vehicleData || []);
             } catch (error) {
                 console.error("Failed to load dashboard data:", error);
