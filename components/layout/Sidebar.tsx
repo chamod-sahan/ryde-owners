@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Car, Calendar, BarChart3, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Car, Calendar, BarChart3, Settings, LogOut, Shield, Package } from "lucide-react";
 import { AuthService } from "@/services/authService";
 import { TokenService } from "@/services/tokenService";
 import { ProfileService } from "@/services/profileService";
@@ -15,6 +15,8 @@ const NAV_ITEMS = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Vehicles", href: "/dashboard/vehicles", icon: Car },
     { label: "Bookings", href: "/dashboard/bookings", icon: Calendar },
+    { label: "Insurance", href: "/dashboard/insurance", icon: Shield },
+    { label: "Equipment", href: "/dashboard/equipment", icon: Package },
     { label: "Earnings", href: "/dashboard/earnings", icon: BarChart3 },
 ];
 

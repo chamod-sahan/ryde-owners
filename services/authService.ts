@@ -58,7 +58,7 @@ export const AuthService = {
      * Refresh the access token using the refresh token
      */
     refreshToken: async (refreshToken: string): Promise<ApiResponse<AuthResponse>> => {
-        const endpoint = process.env.NEXT_PUBLIC_AUTH_REFRESH || "/api/auth/refresh";
+        const endpoint = process.env.NEXT_PUBLIC_AUTH_REFRESH || "/auth/refresh";
         // Pass refreshToken as query param in POST request
         const url = `${endpoint}?refreshToken=${refreshToken}`;
         return await apiClient.post<AuthResponse>(url);

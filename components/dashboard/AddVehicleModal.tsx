@@ -418,7 +418,8 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                                 value={make}
                                 onChange={(val) => {
                                     setMake(val);
-                                    const found = makes.find(m => m.name.toLowerCase() === val.toLowerCase());
+                                    const trimmedVal = val.trim().toLowerCase();
+                                    const found = makes.find(m => m.name.toLowerCase() === trimmedVal);
                                     setMakeId(found?.id || null);
                                 }}
                                 options={makes}
@@ -437,7 +438,8 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                                 value={model}
                                 onChange={(val) => {
                                     setModel(val);
-                                    const found = models.find(m => m.name.toLowerCase() === val.toLowerCase());
+                                    const trimmedVal = val.trim().toLowerCase();
+                                    const found = models.find(m => m.name.toLowerCase() === trimmedVal);
                                     setModelId(found?.id || null);
                                 }}
                                 options={models}
@@ -517,7 +519,10 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                                 ) : (
                                     <>
                                         <AlertCircle className="w-5 h-5 text-amber-400" />
-                                        <span className="text-amber-400 font-semibold">Manual Specification Entry</span>
+                                        <div className="flex flex-col">
+                                            <span className="text-amber-400 font-semibold">Manual Specification Entry</span>
+                                            <span className="text-amber-500/70 text-[10px] uppercase tracking-wider">Please provide missing technical details</span>
+                                        </div>
                                     </>
                                 )}
                             </div>
@@ -642,8 +647,10 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                                 <select
                                     value={bodyType}
                                     onChange={(e) => {
-                                        const selected = bodyTypes.find(bt => bt.name === e.target.value);
-                                        setBodyType(e.target.value);
+                                        const val = e.target.value;
+                                        setBodyType(val);
+                                        const trimmedVal = val.trim().toLowerCase();
+                                        const selected = bodyTypes.find(bt => bt.name.toLowerCase() === trimmedVal);
                                         setBodyTypeId(selected?.id || null);
                                     }}
                                     className="w-full h-11 rounded-xl bg-slate-800/50 px-4 text-sm text-white outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all cursor-pointer"
@@ -764,7 +771,10 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                         <Button
                             type="submit"
                             disabled={loading || isSearching || !bodyTypeId || !makeId || !modelId || !year}
-                            className="flex-1"
+                            className={cn(
+                                "flex-1 transition-all",
+                                (!bodyTypeId || !makeId || !modelId || !year) && !loading && !isSearching && "opacity-70 grayscale-[0.5]"
+                            )}
                         >
                             {loading ? (
                                 <>
@@ -774,7 +784,7 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
                             ) : (
                                 <>
                                     <Check className="w-4 h-4 mr-2" />
-                                    Register Vehicle
+                                    {(!makeId || !modelId || !year) ? "Select Vehicle First" : !bodyTypeId ? "Select Body Type" : "Register Vehicle"}
                                 </>
                             )}
                         </Button>
