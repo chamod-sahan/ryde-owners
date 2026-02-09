@@ -26,6 +26,7 @@ export default function DashboardPage() {
                     DashboardService.getRecentBookings(),
                     ProfileService.getProfile(),
                 ]);
+
                 setKpis(kpiData || []);
                 setVehicles(vehicleData || []);
                 setRecentBookings(bookingData || []);
@@ -115,8 +116,8 @@ export default function DashboardPage() {
                                             <div className="flex items-center justify-between gap-2 mt-0.5">
                                                 <p className="text-xs text-slate-500">{booking.time} • {booking.user}</p>
                                                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${booking.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500' :
-                                                        booking.status === 'ACCEPTED' ? 'bg-emerald-500/10 text-emerald-500' :
-                                                            'bg-blue-500/10 text-blue-500'
+                                                    booking.status === 'ACCEPTED' ? 'bg-emerald-500/10 text-emerald-500' :
+                                                        'bg-blue-500/10 text-blue-500'
                                                     }`}>
                                                     {booking.status}
                                                 </span>

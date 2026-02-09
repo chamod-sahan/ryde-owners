@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Mail, Lock, CheckCircle } from "lucide-react";
 import { AuthService } from "@/services/authService";
+import { TokenService } from "@/services/tokenService";
 
 function LoginForm() {
     const router = useRouter();
@@ -18,23 +19,33 @@ function LoginForm() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+
+        const formData = new FormData(e.currentTarget as HTMLFormElement);
+        const email = formData.get("email") as string;
+        const password = formData.get("password") as string;
+        const rememberMe = formData.get("rememberMe") === "on";
+
+        if (!email || !password) {
+            console.error("Missing credentials in form submission");
+            alert("Please fill in all fields");
+            setLoading(false);
+            return;
+        }
+
         try {
-            // @ts-ignore - Temporary ignore until types are fully aligned if needed, but should be fine
             const response = await AuthService.login({
-                email: (e.target as any)[0].value,
-                password: (e.target as any)[1].value
+                email,
+                password
             });
 
             if (response.success) {
-                // Store tokens if needed, or rely on cookies if the API sets them. 
-                // For now, assuming standard JWT flow, we might need to store it.
-                // However, without a robust state management or cookie logic shown in the limited context,
-                // I will just redirect on success. The AuthService typically handles token storage if designed that way, 
-                // but here it just returns data. I'll add a comment about token storage.
                 if (response.data.accessToken) {
-                    localStorage.setItem('accessToken', response.data.accessToken);
-                    localStorage.setItem('refreshToken', response.data.refreshToken);
-                    localStorage.setItem('user', JSON.stringify(response.data.user));
+                    TokenService.setTokens(
+                        response.data.accessToken,
+                        response.data.refreshToken,
+                        rememberMe
+                    );
+                    TokenService.setUser(response.data.user, rememberMe);
                 }
                 router.push("/dashboard");
             } else {
@@ -76,6 +87,7 @@ function LoginForm() {
             <form onSubmit={handleSubmit} className="space-y-6">
                 <Input
                     label="Email Address"
+                    name="email"
                     type="email"
                     placeholder="you@example.com"
                     icon={<Mail className="h-4 w-4" />}
@@ -83,6 +95,7 @@ function LoginForm() {
                 />
                 <Input
                     label="Password"
+                    name="password"
                     type="password"
                     placeholder="••••••••"
                     icon={<Lock className="h-4 w-4" />}
@@ -116,6 +129,6 @@ export default function LoginPage() {
             <Suspense fallback={<div className="text-white">Loading...</div>}>
                 <LoginForm />
             </Suspense>
-        </main>
+        </main >
     );
 }

@@ -22,6 +22,7 @@ let refreshQueue: ((token: string) => void)[] = [];
 async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = endpoint.startsWith("http") ? endpoint : `${BASE_URL.replace(/\/$/, "")}/${endpoint.replace(/^\//, "")}`;
 
+
     // Helper to get headers with current token
     const getHeaders = () => {
         const headers: HeadersInit = { ...options.headers };
@@ -30,6 +31,18 @@ async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<
             if (token) {
                 (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
             }
+
+    const headers: HeadersInit = {
+        ...options.headers,
+    };
+
+    // Add Authorization header if token exists
+    if (typeof window !== "undefined") {
+        const { TokenService } = require("./tokenService"); // Dynamic import to avoid circular dependency if any, or just import at top level
+        const token = TokenService.getAccessToken();
+        if (token) {
+            (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
+
         }
         if (!(options.body instanceof FormData)) {
             (headers as Record<string, string>)["Content-Type"] = "application/json";

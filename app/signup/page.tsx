@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Mail, Lock, User } from "lucide-react";
 import { AuthService } from "@/services/authService";
+import { toast } from "sonner";
 
 export default function SignupPage() {
     const router = useRouter();
@@ -25,7 +26,7 @@ export default function SignupPage() {
         const confirmPassword = formData.get("confirmPassword") as string;
 
         if (password !== confirmPassword) {
-            alert("Passwords do not match");
+            toast.error("Passwords do not match");
             setLoading(false);
             return;
         }
@@ -69,10 +70,10 @@ export default function SignupPage() {
                     }
                 }
             } else {
-                alert(response.message || "Signup failed");
+                toast.error(response.message || "Signup failed");
             }
         } catch (error: any) {
-            alert(error.message || "An error occurred during signup");
+            toast.error(error.message || "An error occurred during signup");
         } finally {
             setLoading(false);
         }
@@ -110,6 +111,7 @@ export default function SignupPage() {
                             placeholder="John"
                             icon={<User className="h-4 w-4" />}
                             required
+                            name="firstName"
                         />
                         <Input
                             label="Last Name"
@@ -118,6 +120,7 @@ export default function SignupPage() {
                             placeholder="Doe"
                             icon={<User className="h-4 w-4" />}
                             required
+                            name="lastName"
                         />
                     </div>
                     <Input
@@ -127,6 +130,7 @@ export default function SignupPage() {
                         placeholder="you@example.com"
                         icon={<Mail className="h-4 w-4" />}
                         required
+                        name="email"
                     />
                     <Input
                         label="Password"
@@ -135,6 +139,7 @@ export default function SignupPage() {
                         placeholder="••••••••"
                         icon={<Lock className="h-4 w-4" />}
                         required
+                        name="password"
                     />
                     <Input
                         label="Confirm Password"
@@ -143,6 +148,7 @@ export default function SignupPage() {
                         placeholder="••••••••"
                         icon={<Lock className="h-4 w-4" />}
                         required
+                        name="confirmPassword"
                     />
 
                     <Button type="submit" className="w-full" size="lg" disabled={loading}>

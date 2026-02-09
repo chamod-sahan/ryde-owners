@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, Car, Calendar, BarChart3, Settings, LogOut, FileText } from "lucide-react";
 import { AuthService } from "@/services/authService";
+import { TokenService } from "@/services/tokenService";
 import { ProfileService } from "@/services/profileService";
 import { UserResponse } from "@/types/api";
 import Image from "next/image";
@@ -30,15 +31,15 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     React.useEffect(() => {
         const fetchProfile = async () => {
             try {
-                const storedUser = localStorage.getItem("user");
+                const storedUser = TokenService.getUser();
                 if (storedUser) {
-                    setUser(JSON.parse(storedUser));
+                    setUser(storedUser);
                 }
 
                 const response = await ProfileService.getProfile();
                 if (response.success) {
                     setUser(response.data);
-                    localStorage.setItem("user", JSON.stringify(response.data));
+                    TokenService.setUser(response.data);
                 }
             } catch (error) {
                 console.warn("Unable to fetch latest profile for sidebar:", error);
@@ -55,9 +56,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             console.error("Logout failed", error);
             // Continue with client-side cleanup anyway
         } finally {
-            localStorage.removeItem("accessToken");
-            localStorage.removeItem("refreshToken");
-            localStorage.removeItem("user");
+            TokenService.clearTokens();
             router.push("/login");
         }
     };

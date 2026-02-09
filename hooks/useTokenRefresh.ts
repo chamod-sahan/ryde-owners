@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AuthService } from "@/services/authService";
+import { TokenService } from "@/services/tokenService";
 
 /**
  * Custom hook to automatically refresh JWT tokens every 15 minutes
@@ -16,7 +17,7 @@ export function useTokenRefresh() {
         // Function to refresh the token
         const refreshAccessToken = async () => {
             try {
-                const refreshToken = localStorage.getItem("refreshToken");
+                const refreshToken = TokenService.getRefreshToken();
 
                 if (!refreshToken) {
                     console.warn("No refresh token found, skipping token refresh");
@@ -27,13 +28,17 @@ export function useTokenRefresh() {
                 const response = await AuthService.refreshToken(refreshToken);
 
                 if (response.success && response.data) {
-                    // Update tokens in localStorage
-                    localStorage.setItem("accessToken", response.data.accessToken);
-                    localStorage.setItem("refreshToken", response.data.refreshToken);
+                    // Update tokens using TokenService (preserves remember me preference)
+                    const isPersistent = TokenService.isPersistentSession();
+                    TokenService.setTokens(
+                        response.data.accessToken,
+                        response.data.refreshToken,
+                        isPersistent
+                    );
 
                     // Update user data if needed
                     if (response.data.user) {
-                        localStorage.setItem("user", JSON.stringify(response.data.user));
+                        TokenService.setUser(response.data.user, isPersistent);
                     }
 
                     console.log("✅ Token refreshed successfully");
@@ -43,25 +48,20 @@ export function useTokenRefresh() {
             } catch (error) {
                 console.warn("⚠️ Token refresh failed:", error);
 
-                // Check if we had a refresh token before clearing
-                const hadRefreshToken = localStorage.getItem("refreshToken");
-
-                // Clear expired tokens immediately to prevent reuse
-                localStorage.removeItem("accessToken");
-                localStorage.removeItem("refreshToken");
-                localStorage.removeItem("user");
-
-                // Redirect to login if we had a refresh token (meaning it's now expired)
+                // Only redirect to login if we had a refresh token but it failed
+                // This prevents redirecting when user is already logged out
+                const hadRefreshToken = TokenService.getRefreshToken();
                 if (hadRefreshToken) {
                     console.log("Refresh token expired, redirecting to login...");
+                    TokenService.clearTokens();
                     router.push("/login");
                 }
             }
         };
 
         // Check if user is authenticated before starting refresh
-        const accessToken = localStorage.getItem("accessToken");
-        const refreshToken = localStorage.getItem("refreshToken");
+        const accessToken = TokenService.getAccessToken();
+        const refreshToken = TokenService.getRefreshToken();
 
         if (!accessToken || !refreshToken) {
             console.log("User not authenticated, token refresh disabled");
