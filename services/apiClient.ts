@@ -22,37 +22,33 @@ let refreshQueue: ((token: string) => void)[] = [];
 async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = endpoint.startsWith("http") ? endpoint : `${BASE_URL.replace(/\/$/, "")}/${endpoint.replace(/^\//, "")}`;
 
-
     // Helper to get headers with current token
-    const getHeaders = () => {
-        const headers: HeadersInit = { ...options.headers };
-        if (typeof window !== "undefined") {
-            const token = localStorage.getItem("accessToken");
+    const getHeaders = (endpoint: string) => {
+        const headers: HeadersInit = {
+            ...options.headers,
+        };
+
+        // Add Authorization header if token exists AND endpoint is not public
+        if (typeof window !== "undefined" && !isPublicEndpoint(endpoint)) {
+            // Use dynamic require to avoid circular dependency
+            const { TokenService } = require("./tokenService");
+            const token = TokenService.getAccessToken();
             if (token) {
                 (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
             }
-
-    const headers: HeadersInit = {
-        ...options.headers,
-    };
-
-    // Add Authorization header if token exists
-    if (typeof window !== "undefined") {
-        const { TokenService } = require("./tokenService"); // Dynamic import to avoid circular dependency if any, or just import at top level
-        const token = TokenService.getAccessToken();
-        if (token) {
-            (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-
         }
+
         if (!(options.body instanceof FormData)) {
             (headers as Record<string, string>)["Content-Type"] = "application/json";
         }
         return headers;
     };
 
+    const headers = getHeaders(endpoint);
+
     let response = await fetch(url, {
         ...options,
-        headers: getHeaders(),
+        headers,
     });
 
     // Handle 401 Unauthorized (Token expired)
@@ -89,7 +85,7 @@ async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<
                             // Retry current request
                             response = await fetch(url, {
                                 ...options,
-                                headers: getHeaders(),
+                                headers: getHeaders(endpoint),
                             });
                         } else {
                             throw new Error("Invalid refresh response");

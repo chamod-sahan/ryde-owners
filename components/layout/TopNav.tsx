@@ -9,6 +9,8 @@ import { AuthService } from "@/services/authService";
 import { ProfileService } from "@/services/profileService";
 import { AuthResponse, UserResponse } from "@/types/api";
 import Image from "next/image";
+import { NotificationService, Notification } from "@/services/notificationService";
+import { NotificationDropdown } from "./NotificationDropdown";
 
 interface TopNavProps {
     onMenuClick: () => void;
@@ -16,6 +18,9 @@ interface TopNavProps {
 
 export function TopNav({ onMenuClick }: TopNavProps) {
     const [user, setUser] = React.useState<UserResponse | null>(null);
+    const [notifications, setNotifications] = React.useState<Notification[]>([]);
+    const [showNotifications, setShowNotifications] = React.useState(false);
+    const [unreadCount, setUnreadCount] = React.useState(0);
 
     React.useEffect(() => {
         const fetchProfile = async () => {
@@ -34,14 +39,27 @@ export function TopNav({ onMenuClick }: TopNavProps) {
                     TokenService.setUser(response.data);
                 }
             } catch (error) {
-                // Backend might be having connectivity issues with the Auth Provider (502 Bad Gateway)
-                // Fallback to stored user data is already handled by initial state
                 console.warn("Unable to fetch latest profile (using cached data):", error);
             }
         };
 
+        const fetchNotifications = async () => {
+            const data = await NotificationService.getNotifications();
+            setNotifications(data);
+            setUnreadCount(data.filter(n => !n.read).length);
+        };
+
         fetchProfile();
+        fetchNotifications();
     }, []);
+
+    const handleMarkAsRead = async (id: string) => {
+        await NotificationService.markAsRead(id);
+        const updated = notifications.map(n => n.id === id ? { ...n, read: true } : n);
+        setNotifications(updated);
+        setUnreadCount(updated.filter(n => !n.read).length);
+    };
+
     return (
         <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-white/5 bg-[#0B0F19]/80 px-4 md:px-8 backdrop-blur-xl">
             <div className="flex items-center gap-4">
@@ -56,23 +74,32 @@ export function TopNav({ onMenuClick }: TopNavProps) {
 
                 {/* Search / Breadcrumb Placeholder */}
                 <div className="hidden sm:flex items-center gap-4">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                        <input
-                            type="text"
-                            placeholder="Search..."
-                            className="h-10 w-40 lg:w-64 rounded-xl bg-[#151C2C] pl-10 pr-4 text-sm text-white placeholder-slate-500 outline-none ring-1 ring-white/5 focus:ring-primary/50 transition-all"
-                        />
-                    </div>
                 </div>
             </div>
 
             {/* Right Actions */}
             <div className="flex items-center gap-2 sm:gap-4">
-                <Button variant="ghost" size="icon" className="relative rounded-xl text-slate-400 hover:bg-[#2A3447] hover:text-white">
-                    <Bell className="h-5 w-5" />
-                    <span className="absolute right-3 top-3 h-1.5 w-1.5 rounded-full bg-destructive ring-1 ring-[#0B0F19]" />
-                </Button>
+                <div className="relative">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="relative rounded-xl text-slate-400 hover:bg-[#2A3447] hover:text-white"
+                        onClick={() => setShowNotifications(!showNotifications)}
+                    >
+                        <Bell className="h-5 w-5" />
+                        {unreadCount > 0 && (
+                            <span className="absolute right-3 top-3 h-1.5 w-1.5 rounded-full bg-destructive ring-1 ring-[#0B0F19]" />
+                        )}
+                    </Button>
+
+                    {showNotifications && (
+                        <NotificationDropdown
+                            notifications={notifications}
+                            onMarkAsRead={handleMarkAsRead}
+                            onClose={() => setShowNotifications(false)}
+                        />
+                    )}
+                </div>
 
                 <div className="flex items-center gap-2 pl-2 sm:pl-4 border-l border-white/5">
                     <div className="text-right hidden lg:block">
