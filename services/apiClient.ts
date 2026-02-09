@@ -2,47 +2,58 @@ import { ApiResponse } from "@/types/api";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
+// Public endpoints that should not trigger token refresh
+const PUBLIC_ENDPOINTS = [
+    '/auth/login',
+    '/auth/register',
+    '/auth/refresh',
+    '/auth/reset-password',
+    '/auth/verify-email'
+];
+
+// Helper function to check if endpoint is public
+const isPublicEndpoint = (endpoint: string): boolean => {
+    return PUBLIC_ENDPOINTS.some(publicPath => endpoint.includes(publicPath));
+};
+
 let isRefreshing = false;
 let refreshQueue: ((token: string) => void)[] = [];
 
 async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = endpoint.startsWith("http") ? endpoint : `${BASE_URL.replace(/\/$/, "")}/${endpoint.replace(/^\//, "")}`;
 
-
     // Helper to get headers with current token
-    const getHeaders = () => {
-        const headers: HeadersInit = { ...options.headers };
-        if (typeof window !== "undefined") {
-            const token = localStorage.getItem("accessToken");
+    const getHeaders = (endpoint: string) => {
+        const headers: HeadersInit = {
+            ...options.headers,
+        };
+
+        // Add Authorization header if token exists AND endpoint is not public
+        if (typeof window !== "undefined" && !isPublicEndpoint(endpoint)) {
+            // Use dynamic require to avoid circular dependency
+            const { TokenService } = require("./tokenService");
+            const token = TokenService.getAccessToken();
             if (token) {
                 (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
             }
-
-    const headers: HeadersInit = {
-        ...options.headers,
-    };
-
-    // Add Authorization header if token exists
-    if (typeof window !== "undefined") {
-        const { TokenService } = require("./tokenService"); // Dynamic import to avoid circular dependency if any, or just import at top level
-        const token = TokenService.getAccessToken();
-        if (token) {
-            (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
-
         }
+
         if (!(options.body instanceof FormData)) {
             (headers as Record<string, string>)["Content-Type"] = "application/json";
         }
         return headers;
     };
 
+    const headers = getHeaders(endpoint);
+
     let response = await fetch(url, {
         ...options,
-        headers: getHeaders(),
+        headers,
     });
 
     // Handle 401 Unauthorized (Token expired)
-    if (response.status === 401 && !endpoint.includes("/auth/refresh")) {
+    // Skip token refresh for public endpoints (login, register, etc.)
+    if (response.status === 401 && !isPublicEndpoint(endpoint)) {
         console.warn(`🔒 Received 401 Unauthorized for ${endpoint}. Attempting token refresh...`);
 
         if (!isRefreshing) {
@@ -74,27 +85,50 @@ async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<
                             // Retry current request
                             response = await fetch(url, {
                                 ...options,
-                                headers: getHeaders(),
+                                headers: getHeaders(endpoint),
                             });
                         } else {
                             throw new Error("Invalid refresh response");
                         }
                     } else {
+                        // Handle server errors differently from auth errors
+                        if (refreshResponse.status >= 500) {
+                            throw new Error(`Server error during refresh (${refreshResponse.status})`);
+                        }
                         throw new Error("Refresh failed");
                     }
-                } catch (error) {
+                } catch (error: any) {
                     console.error("❌ Token refresh failed:", error);
                     isRefreshing = false;
                     refreshQueue = [];
-                    if (typeof window !== "undefined") {
+
+                    // Only log out if it's explicitly an auth failure or session expiry
+                    // If it's a network error or 500 server error (Redis down), KEEP the session
+                    const isServerError = error.message?.includes("Server error") || error.message?.includes("Network error");
+
+                    if (!isServerError && typeof window !== "undefined") {
+                        console.warn("⚠️ Session expired or invalid. Clearing tokens and logging out.");
+                        // Clear expired tokens immediately to prevent reuse
                         localStorage.removeItem("accessToken");
                         localStorage.removeItem("refreshToken");
+                        localStorage.removeItem("user");
                         window.dispatchEvent(new CustomEvent("auth:unauthorized"));
+                    } else {
+                        console.warn("⚠️ Refresh failed due to server/network error. Session preserved.");
+                    }
+
+                    if (isServerError) {
+                        // Return the original error so the UI can handle it (e.g. show "Offline" badge)
+                        throw error;
                     }
                     throw new Error("Session expired. Please login again.");
                 }
             } else {
+                // No refresh token available, clear any stale tokens
                 if (typeof window !== "undefined") {
+                    localStorage.removeItem("accessToken");
+                    localStorage.removeItem("refreshToken");
+                    localStorage.removeItem("user");
                     window.dispatchEvent(new CustomEvent("auth:unauthorized"));
                 }
                 throw new Error("Unauthorized");

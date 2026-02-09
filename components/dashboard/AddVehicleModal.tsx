@@ -335,6 +335,13 @@ export function AddVehicleModal({ isOpen, onClose, onAdd }: AddVehicleModalProps
         // If vehicle NOT found, we need the manual inputs
         if (!searchResult?.available && (!fuelTypeId || !transmissionId || !driveTypeId)) {
             console.warn("Validation failed: Missing manual specs for new vehicle");
+            // Highlight missing fields or show error
+            let missing = [];
+            if (!fuelTypeId) missing.push("Fuel Type");
+            if (!transmissionId) missing.push("Transmission");
+            if (!driveTypeId) missing.push("Drive Type");
+
+            alert(`Please select the following details: ${missing.join(", ")}`);
             return;
         }
 
