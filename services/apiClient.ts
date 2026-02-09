@@ -1,4 +1,5 @@
 import { ApiResponse } from "@/types/api";
+import { TokenService } from "./tokenService";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
@@ -30,8 +31,6 @@ async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<
 
         // Add Authorization header if token exists AND endpoint is not public
         if (typeof window !== "undefined" && !isPublicEndpoint(endpoint)) {
-            // Use dynamic require to avoid circular dependency
-            const { TokenService } = require("./tokenService");
             const token = TokenService.getAccessToken();
             if (token) {
                 (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
@@ -58,12 +57,15 @@ async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<
 
         if (!isRefreshing) {
             isRefreshing = true;
-            const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refreshToken") : null;
+            const refreshToken = typeof window !== "undefined" ? TokenService.getRefreshToken() : null;
 
             if (refreshToken) {
                 try {
                     // Try to refresh token
-                    const refreshUrl = `${BASE_URL.replace(/\/$/, "")}/api/auth/refresh?refreshToken=${refreshToken}`;
+                    const refreshEndpoint = process.env.NEXT_PUBLIC_AUTH_REFRESH || "/auth/refresh";
+                    const refreshUrl = refreshEndpoint.startsWith("http")
+                        ? `${refreshEndpoint}?refreshToken=${refreshToken}`
+                        : `${BASE_URL.replace(/\/$/, "")}/${refreshEndpoint.replace(/^\//, "")}?refreshToken=${refreshToken}`;
                     const refreshResponse = await fetch(refreshUrl, { method: "POST" });
 
                     if (refreshResponse.ok) {
@@ -72,8 +74,12 @@ async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<
                         const newRefreshToken = refreshData.refreshToken || refreshData.data?.refreshToken;
 
                         if (newAccessToken && typeof window !== "undefined") {
-                            localStorage.setItem("accessToken", newAccessToken);
-                            if (newRefreshToken) localStorage.setItem("refreshToken", newRefreshToken);
+                            const isPersistent = TokenService.isPersistentSession();
+                            TokenService.setTokens(
+                                newAccessToken,
+                                newRefreshToken || refreshToken,
+                                isPersistent
+                            );
 
                             console.log("✅ Token refreshed successfully. Retrying queued requests.");
 
@@ -109,9 +115,7 @@ async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<
                     if (!isServerError && typeof window !== "undefined") {
                         console.warn("⚠️ Session expired or invalid. Clearing tokens and logging out.");
                         // Clear expired tokens immediately to prevent reuse
-                        localStorage.removeItem("accessToken");
-                        localStorage.removeItem("refreshToken");
-                        localStorage.removeItem("user");
+                        TokenService.clearTokens();
                         window.dispatchEvent(new CustomEvent("auth:unauthorized"));
                     } else {
                         console.warn("⚠️ Refresh failed due to server/network error. Session preserved.");
@@ -126,9 +130,7 @@ async function fetcher<T>(endpoint: string, options: RequestInit = {}): Promise<
             } else {
                 // No refresh token available, clear any stale tokens
                 if (typeof window !== "undefined") {
-                    localStorage.removeItem("accessToken");
-                    localStorage.removeItem("refreshToken");
-                    localStorage.removeItem("user");
+                    TokenService.clearTokens();
                     window.dispatchEvent(new CustomEvent("auth:unauthorized"));
                 }
                 throw new Error("Unauthorized");

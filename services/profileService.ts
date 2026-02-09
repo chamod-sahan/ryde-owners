@@ -6,24 +6,7 @@ export const ProfileService = {
      * Get current user profile with logo and addresses
      */
     getProfile: async (): Promise<ApiResponse<UserResponse>> => {
-        try {
-            return await apiClient.get<UserResponse>("/profile");
-        } catch (error) {
-            console.warn("Failed to fetch profile (using fallback):", error);
-            return {
-                success: true,
-                message: "Mock Profile",
-                data: {
-                    id: 1,
-                    email: "owner@ryde.com",
-                    firstName: "Demo",
-                    lastName: "Owner",
-                    roles: ["CAR_OWNER"],
-                    isActive: true,
-                    emailVerified: true
-                }
-            };
-        }
+        return await apiClient.get<UserResponse>("/profile");
     },
 
     /**
