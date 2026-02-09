@@ -43,14 +43,17 @@ export function useTokenRefresh() {
             } catch (error) {
                 console.warn("⚠️ Token refresh failed:", error);
 
-                // Only redirect to login if we had a refresh token but it failed
-                // This prevents redirecting when user is already logged out
+                // Check if we had a refresh token before clearing
                 const hadRefreshToken = localStorage.getItem("refreshToken");
+
+                // Clear expired tokens immediately to prevent reuse
+                localStorage.removeItem("accessToken");
+                localStorage.removeItem("refreshToken");
+                localStorage.removeItem("user");
+
+                // Redirect to login if we had a refresh token (meaning it's now expired)
                 if (hadRefreshToken) {
                     console.log("Refresh token expired, redirecting to login...");
-                    localStorage.removeItem("accessToken");
-                    localStorage.removeItem("refreshToken");
-                    localStorage.removeItem("user");
                     router.push("/login");
                 }
             }

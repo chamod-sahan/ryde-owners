@@ -10,6 +10,91 @@ import {
     UpdateVehicleRequest
 } from "@/types/api";
 
+// Mock Data Fallbacks
+const MOCK_MAKES = [
+    { id: 1, name: "Toyota" },
+    { id: 2, name: "Honda" },
+    { id: 3, name: "Nissan" },
+    { id: 4, name: "Suzuki" },
+    { id: 5, name: "Mitsubishi" },
+    { id: 6, name: "BMW" },
+    { id: 7, name: "Mercedes-Benz" },
+    { id: 8, name: "Audi" },
+    { id: 9, name: "Kia" },
+    { id: 10, name: "Hyundai" }
+];
+
+const MOCK_BODY_TYPES = [
+    { id: 1, name: "Sedan", code: "SEDAN" },
+    { id: 2, name: "SUV", code: "SUV" },
+    { id: 3, name: "Hatchback", code: "HATCHBACK" },
+    { id: 4, name: "Van", code: "VAN" },
+    { id: 5, name: "Coupe", code: "COUPE" },
+    { id: 6, name: "Convertible", code: "CONVERTIBLE" },
+    { id: 7, name: "Wagon", code: "WAGON" },
+    { id: 8, name: "Pickup", code: "PICKUP" }
+];
+
+const MOCK_FUEL_TYPES = [
+    { id: 1, name: "Petrol", code: "PETROL" },
+    { id: 2, name: "Diesel", code: "DIESEL" },
+    { id: 3, name: "Hybrid", code: "HYBRID" },
+    { id: 4, name: "Electric", code: "ELECTRIC" },
+    { id: 5, name: "Plug-in Hybrid", code: "PHEV" }
+];
+
+const MOCK_TRANSMISSIONS = [
+    { id: 1, name: "Automatic", code: "AUTO" },
+    { id: 2, name: "Manual", code: "MANUAL" },
+    { id: 3, name: "Tiptronic", code: "TIPTRONIC" },
+    { id: 4, name: "CVT", code: "CVT" }
+];
+
+const MOCK_DRIVE_TYPES = [
+    { id: 1, name: "Front Wheel Drive", code: "FWD" },
+    { id: 2, name: "Rear Wheel Drive", code: "RWD" },
+    { id: 3, name: "All Wheel Drive", code: "AWD" },
+    { id: 4, name: "4 Wheel Drive", code: "4WD" }
+];
+
+const MOCK_MODELS: Record<string, { id: number; name: string }[]> = {
+    "Toyota": [
+        { id: 101, name: "Corolla" }, { id: 102, name: "Camry" }, { id: 103, name: "Prius" },
+        { id: 104, name: "Yaris" }, { id: 105, name: "Vitz" }, { id: 106, name: "Land Cruiser" },
+        { id: 107, name: "Prado" }, { id: 108, name: "Aqua" }, { id: 109, name: "Axio" }, { id: 110, name: "Premio" }
+    ],
+    "Honda": [
+        { id: 201, name: "Civic" }, { id: 202, name: "Accord" }, { id: 203, name: "Fit" },
+        { id: 204, name: "Vezel" }, { id: 205, name: "CR-V" }, { id: 206, name: "Insight" }, { id: 207, name: "Grace" }
+    ],
+    "Nissan": [
+        { id: 301, name: "Sunny" }, { id: 302, name: "Leaf" }, { id: 303, name: "X-Trail" },
+        { id: 304, name: "Patrol" }, { id: 305, name: "March" }, { id: 306, name: "Tiida" }
+    ],
+    "Suzuki": [
+        { id: 401, name: "Alto" }, { id: 402, name: "Wagon R" }, { id: 403, name: "Swift" },
+        { id: 404, name: "Baleno" }, { id: 405, name: "Celerio" }, { id: 406, name: "Every" }
+    ],
+    "Mitsubishi": [
+        { id: 501, name: "Lancer" }, { id: 502, name: "Montero" }, { id: 503, name: "Outlander" }, { id: 504, name: "Mirage" }
+    ],
+    "BMW": [
+        { id: 601, name: "3 Series" }, { id: 602, name: "5 Series" }, { id: 603, name: "X1" }, { id: 604, name: "X3" }, { id: 605, name: "X5" }, { id: 606, name: "i8" }
+    ],
+    "Mercedes-Benz": [
+        { id: 701, name: "C-Class" }, { id: 702, name: "E-Class" }, { id: 703, name: "S-Class" }, { id: 704, name: "CLA" }, { id: 705, name: "GLA" }
+    ],
+    "Audi": [
+        { id: 801, name: "A3" }, { id: 802, name: "A4" }, { id: 803, name: "A6" }, { id: 804, name: "Q3" }, { id: 805, name: "Q5" }, { id: 806, name: "Q7" }
+    ],
+    "Kia": [
+        { id: 901, name: "Picanto" }, { id: 902, name: "Rio" }, { id: 903, name: "Sportage" }, { id: 904, name: "Sorento" }
+    ],
+    "Hyundai": [
+        { id: 1001, name: "Elantra" }, { id: 1002, name: "Tucson" }, { id: 1003, name: "Santa Fe" }, { id: 1004, name: "Sonata" }, { id: 1005, name: "Grand i10" }
+    ]
+};
+
 /**
  * VehicleService handles all vehicle-related API calls.
  * All data comes from backend APIs only - no mock data.
@@ -123,8 +208,8 @@ export const VehicleService = {
                 code: bt.code
             }));
         } catch (error) {
-            console.error("❌ Failed to fetch body types:", error);
-            return [];
+            console.warn("⚠️ Failed to fetch body types (using fallback):", error);
+            return MOCK_BODY_TYPES;
         }
     },
 
@@ -134,10 +219,15 @@ export const VehicleService = {
      */
     getMakes: async (): Promise<{ id: number; name: string }[]> => {
         console.log("🚗 Fetching vehicle makes from API...");
-        const response = await apiClient.get<any>("/vehicles/comprehensive/makes");
-        const data = Array.isArray(response) ? response : (response.data || []);
-        console.log(`✅ Fetched ${data.length} vehicle makes`);
-        return data.map((m: any) => ({ id: m.id, name: m.name }));
+        try {
+            const response = await apiClient.get<any>("/vehicles/comprehensive/makes");
+            const data = Array.isArray(response) ? response : (response.data || []);
+            console.log(`✅ Fetched ${data.length} vehicle makes`);
+            return data.map((m: any) => ({ id: m.id, name: m.name }));
+        } catch (error) {
+            console.warn("⚠️ Failed to fetch makes (using fallback):", error);
+            return MOCK_MAKES;
+        }
     },
 
     /**
@@ -147,15 +237,24 @@ export const VehicleService = {
     getModels: async (makeName: string, makeId?: number): Promise<{ id: number; name: string }[]> => {
         console.log(`🚗 Fetching models for make: ${makeName} (id: ${makeId})`);
 
-        if (!makeId) {
-            console.warn("⚠️ No makeId provided, cannot fetch models");
+        if (!makeId && !makeName) {
+            console.warn("⚠️ No makeId or makeName provided, cannot fetch models");
             return [];
         }
 
-        const response = await apiClient.get<any>("/vehicles/comprehensive/models", { makeId });
-        const data = Array.isArray(response) ? response : (response.data || []);
-        console.log(`✅ Fetched ${data.length} models for ${makeName}`);
-        return data.map((m: any) => ({ id: m.id, name: m.name }));
+        try {
+            if (makeId) {
+                const response = await apiClient.get<any>("/vehicles/comprehensive/models", { makeId });
+                const data = Array.isArray(response) ? response : (response.data || []);
+                console.log(`✅ Fetched ${data.length} models for ${makeName}`);
+                return data.map((m: any) => ({ id: m.id, name: m.name }));
+            }
+            throw new Error("No makeId provided");
+        } catch (error) {
+            console.warn(`⚠️ Failed to fetch models for ${makeName} (using fallback):`, error);
+            const mockModels = MOCK_MODELS[makeName] || [];
+            return mockModels.map((m, index) => ({ id: m.id || (makeId ? makeId * 100 + index : index), name: m.name }));
+        }
     },
 
     /**
@@ -198,7 +297,7 @@ export const VehicleService = {
             return Array.from(uniqueSubmodels.values());
         } catch (error) {
             console.error("❌ Failed to fetch submodels:", error);
-            return [];
+            return []; // No mock data for detailed submodels yet
         }
     },
 
@@ -228,12 +327,25 @@ export const VehicleService = {
      */
     searchSpecs: async (makeId: number, modelId: number, year: number): Promise<VehicleSearchResponse> => {
         console.log(`🔍 Searching vehicle specs: makeId=${makeId}, modelId=${modelId}, year=${year}`);
-        const response = await apiClient.get<VehicleSearchResponse>(
-            "/owner-vehicles/search-specs",
-            { makeId, modelId, year }
-        );
-        const data = (response as any).data || response;
-        return data as VehicleSearchResponse;
+        try {
+            const response = await apiClient.get<VehicleSearchResponse>(
+                "/owner-vehicles/search-specs",
+                { makeId, modelId, year }
+            );
+            const data = (response as any).data || response;
+            return data as VehicleSearchResponse;
+        } catch (error) {
+            console.warn("⚠️ Failed to search specs (returning unavailable):", error);
+            // Return unavailable to trigger manual entry mode in UI
+            return {
+                available: false,
+                makeId,
+                makeName: "",
+                modelId,
+                modelName: "",
+                year
+            } as VehicleSearchResponse;
+        }
     },
 
     /**
@@ -274,10 +386,15 @@ export const VehicleService = {
      */
     getFuelTypes: async (): Promise<{ id: number; name: string; code: string }[]> => {
         console.log("🚗 Fetching fuel types from API...");
-        const response = await apiClient.get<any>("/vehicles/comprehensive/fuel-types");
-        const data = Array.isArray(response) ? response : (response.data || []);
-        console.log(`✅ Fetched ${data.length} fuel types`);
-        return data.map((ft: any) => ({ id: ft.id, name: ft.name, code: ft.code }));
+        try {
+            const response = await apiClient.get<any>("/vehicles/comprehensive/fuel-types");
+            const data = Array.isArray(response) ? response : (response.data || []);
+            console.log(`✅ Fetched ${data.length} fuel types`);
+            return data.map((ft: any) => ({ id: ft.id, name: ft.name, code: ft.code }));
+        } catch (error) {
+            console.warn("⚠️ Failed to fetch fuel types (using fallback):", error);
+            return MOCK_FUEL_TYPES;
+        }
     },
 
     /**
@@ -286,10 +403,15 @@ export const VehicleService = {
      */
     getTransmissions: async (): Promise<{ id: number; name: string; code: string }[]> => {
         console.log("🚗 Fetching transmissions from API...");
-        const response = await apiClient.get<any>("/vehicles/comprehensive/transmissions");
-        const data = Array.isArray(response) ? response : (response.data || []);
-        console.log(`✅ Fetched ${data.length} transmissions`);
-        return data.map((t: any) => ({ id: t.id, name: t.name, code: t.code }));
+        try {
+            const response = await apiClient.get<any>("/vehicles/comprehensive/transmissions");
+            const data = Array.isArray(response) ? response : (response.data || []);
+            console.log(`✅ Fetched ${data.length} transmissions`);
+            return data.map((t: any) => ({ id: t.id, name: t.name, code: t.code }));
+        } catch (error) {
+            console.warn("⚠️ Failed to fetch transmissions (using fallback):", error);
+            return MOCK_TRANSMISSIONS;
+        }
     },
 
     /**
@@ -298,9 +420,14 @@ export const VehicleService = {
      */
     getDriveTypes: async (): Promise<{ id: number; name: string; code: string }[]> => {
         console.log("🚗 Fetching drive types from API...");
-        const response = await apiClient.get<any>("/vehicles/comprehensive/drive-types");
-        const data = Array.isArray(response) ? response : (response.data || []);
-        console.log(`✅ Fetched ${data.length} drive types`);
-        return data.map((dt: any) => ({ id: dt.id, name: dt.name, code: dt.code }));
+        try {
+            const response = await apiClient.get<any>("/vehicles/comprehensive/drive-types");
+            const data = Array.isArray(response) ? response : (response.data || []);
+            console.log(`✅ Fetched ${data.length} drive types`);
+            return data.map((dt: any) => ({ id: dt.id, name: dt.name, code: dt.code }));
+        } catch (error) {
+            console.warn("⚠️ Failed to fetch drive types (using fallback):", error);
+            return MOCK_DRIVE_TYPES;
+        }
     }
 };

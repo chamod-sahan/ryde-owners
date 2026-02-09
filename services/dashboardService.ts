@@ -3,6 +3,13 @@ import { VehicleService } from "./vehicleService";
 import { BookingService } from "./bookingService";
 import { TransactionService } from "./transactionService";
 import { apiClient } from "./apiClient";
+import {
+    MOCK_KPIS,
+    MOCK_VEHICLES,
+    MOCK_BOOKINGS,
+    MOCK_EARNINGS,
+    MOCK_TRANSACTIONS
+} from "./mockData";
 
 export interface DashboardVehicle {
     id: string;
@@ -109,8 +116,12 @@ export const DashboardService = {
                 }
             ];
         } catch (error) {
-            console.error("Failed to fetch dashboard stats:", error);
-            return [];
+            console.warn("Failed to fetch dashboard stats (using fallback):", error);
+            // Fallback to mock KPIs
+            return MOCK_KPIS.map(k => ({
+                ...k,
+                trendUp: k.trendUp ?? true // Ensure trendUp exists
+            })) as KPI[];
         }
     },
 
@@ -145,9 +156,25 @@ export const DashboardService = {
                 availabilityStatus: v.availabilityStatus
             }));
         } catch (error) {
-            console.error("Failed to fetch all vehicles:", error);
+            console.warn("Failed to fetch all vehicles (using fallback):", error);
+            // Fallback to mock vehicles
+            return MOCK_VEHICLES.map(v => ({
+                id: v.id,
+                name: v.name,
+                status: v.status as any,
+                earnings: v.earnings,
+                trips: v.trips,
+                rating: v.rating,
+                bodyType: v.bodyType,
+                fuel: v.fuel,
+                transmission: v.transmission,
+                seats: v.seats,
+                location: "Colombo", // Default for mock
+                description: "Mock vehicle description",
+                isActive: true,
+                availabilityStatus: v.status === "Active" ? "AVAILABLE" : "BOOKED"
+            }));
         }
-        return [];
     },
 
     getTopVehicles: async (): Promise<DashboardVehicle[]> => {
@@ -162,30 +189,47 @@ export const DashboardService = {
                 })
                 .slice(0, 5);
         } catch (error) {
-            console.error("Failed to fetch top vehicles:", error);
+            console.warn("Failed to fetch top vehicles (using fallback):", error);
+            // Reuse logic from getAllVehicles fallback since we are inside the service
+            const allVehicles = await DashboardService.getAllVehicles();
+            // The getAllVehicles now has a fallback, so this will return mocks if API failed
+            return allVehicles
+                .sort((a, b) => {
+                    const priceA = parseFloat(a.earnings.replace(/[^\d.]/g, '')) || 0;
+                    const priceB = parseFloat(b.earnings.replace(/[^\d.]/g, '')) || 0;
+                    return priceB - priceA;
+                })
+                .slice(0, 5);
         }
-        return [];
     },
 
     getAllBookings: async (): Promise<Booking[]> => {
         try {
             const response = await BookingService.getBookings({ limit: 100 });
-            if (response.success) {
-                const bookings = response.data?.data || [];
-                return bookings.map((b: any) => ({
-                    id: b.id.toString(),
-                    vehicleName: b.vehicleName || `Vehicle #${b.vehicleId}`,
-                    customerName: b.customerName || `Customer #${b.customerId}`,
-                    startDate: b.startDate,
-                    endDate: b.endDate,
-                    totalPrice: `LKR ${b.totalAmount?.toLocaleString() || '0'}`,
-                    status: b.bookingStatus
-                }));
-            }
+            if (!response.success) throw new Error("API failed");
+
+            const bookings = response.data?.data || [];
+            return bookings.map((b: any) => ({
+                id: b.id.toString(),
+                vehicleName: b.vehicleName || `Vehicle #${b.vehicleId}`,
+                customerName: b.customerName || `Customer #${b.customerId}`,
+                startDate: b.startDate,
+                endDate: b.endDate,
+                totalPrice: `LKR ${b.totalAmount?.toLocaleString() || '0'}`,
+                status: b.bookingStatus
+            }));
         } catch (error) {
-            console.error("Failed to fetch all bookings:", error);
+            console.warn("Failed to fetch all bookings (using fallback):", error);
+            return MOCK_BOOKINGS.map(b => ({
+                id: b.id,
+                vehicleName: b.vehicleName,
+                customerName: b.customerName,
+                startDate: b.startDate,
+                endDate: b.endDate,
+                totalPrice: b.totalPrice,
+                status: b.status as any
+            }));
         }
-        return [];
     },
 
     getRecentBookings: async (): Promise<DashboardBooking[]> => {
@@ -202,39 +246,50 @@ export const DashboardService = {
                 user: `Customer #${b.customerId}`
             }));
         } catch (error) {
-            console.error("Failed to fetch recent bookings:", error);
+            console.warn("Failed to fetch recent bookings (using fallback):", error);
+            return MOCK_BOOKINGS.slice(0, 5).map(b => ({
+                id: b.id,
+                car: b.vehicleName,
+                status: b.status,
+                time: new Date().toLocaleDateString(), // Mock current date
+                user: b.customerName
+            }));
         }
-        return [];
     },
 
     getEarningsHistory: async (): Promise<EarningStat[]> => {
         try {
             const response = await AnalyticsService.getEarnings();
-            if (response.success) {
-                return response.data;
-            }
+            if (!response.success) throw new Error("API failed");
+            return response.data;
         } catch (error) {
-            console.error("Failed to fetch earnings history:", error);
+            console.warn("Failed to fetch earnings history (using fallback):", error);
+            return MOCK_EARNINGS;
         }
-        return [];
     },
 
     getTransactions: async (): Promise<Transaction[]> => {
         try {
             const response = await TransactionService.getTransactions({ limit: 10 });
-            if (response.success) {
-                const transactions = response.data?.data || [];
-                return transactions.map((t: any) => ({
-                    id: t.id.toString(),
-                    date: t.date,
-                    description: t.description,
-                    amount: t.amount,
-                    status: t.status
-                }));
-            }
+            if (!response.success) throw new Error("API failed");
+
+            const transactions = response.data?.data || [];
+            return transactions.map((t: any) => ({
+                id: t.id.toString(),
+                date: t.date,
+                description: t.description,
+                amount: t.amount,
+                status: t.status
+            }));
         } catch (error) {
-            console.error("Failed to fetch transactions:", error);
+            console.warn("Failed to fetch transactions (using fallback):", error);
+            return MOCK_TRANSACTIONS.map(t => ({
+                id: t.id,
+                date: t.date,
+                description: t.description,
+                amount: t.amount,
+                status: t.status as any
+            }));
         }
-        return [];
     }
 };

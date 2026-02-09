@@ -17,14 +17,12 @@ export default function SignupPage() {
         e.preventDefault();
         setLoading(true);
 
-        const form = e.target as HTMLFormElement;
-        // Elements index depends on the DOM order. 
-        // 0: First Name, 1: Last Name, 2: Email, 3: Password, 4: Confirm
-        const firstName = (form.elements[0] as HTMLInputElement).value;
-        const lastName = (form.elements[1] as HTMLInputElement).value;
-        const email = (form.elements[2] as HTMLInputElement).value;
-        const password = (form.elements[3] as HTMLInputElement).value;
-        const confirmPassword = (form.elements[4] as HTMLInputElement).value;
+        const formData = new FormData(e.currentTarget as HTMLFormElement);
+        const firstName = formData.get("firstName") as string;
+        const lastName = formData.get("lastName") as string;
+        const email = formData.get("email") as string;
+        const password = formData.get("password") as string;
+        const confirmPassword = formData.get("confirmPassword") as string;
 
         if (password !== confirmPassword) {
             alert("Passwords do not match");
@@ -46,8 +44,30 @@ export default function SignupPage() {
                     localStorage.setItem('accessToken', response.data.accessToken);
                     localStorage.setItem('refreshToken', response.data.refreshToken);
                     localStorage.setItem('user', JSON.stringify(response.data.user));
+                    router.push("/dashboard");
+                } else {
+                    // No token means email verification might be required, OR we just need to login manually.
+                    // Try to auto-login
+                    try {
+                        const loginResponse = await AuthService.login({
+                            email,
+                            password
+                        });
+
+                        if (loginResponse.success && loginResponse.data.accessToken) {
+                            localStorage.setItem('accessToken', loginResponse.data.accessToken);
+                            localStorage.setItem('refreshToken', loginResponse.data.refreshToken);
+                            localStorage.setItem('user', JSON.stringify(loginResponse.data.user));
+                            router.push("/dashboard");
+                        } else {
+                            // Login failed (maybe strict email verification), redirect to login page
+                            router.push("/login?registered=true");
+                        }
+                    } catch (loginError) {
+                        console.warn("Auto-login failed:", loginError);
+                        router.push("/login?registered=true");
+                    }
                 }
-                router.push("/dashboard");
             } else {
                 alert(response.message || "Signup failed");
             }
@@ -68,6 +88,15 @@ export default function SignupPage() {
 
             <GlassCard className="w-full max-w-md p-8 relative z-10">
                 <div className="text-center mb-8">
+                    <div className="flex justify-center mb-6">
+                        <div className="h-16 w-16 overflow-hidden rounded-xl">
+                            <img
+                                src="/RYDE_V2-1.png"
+                                alt="RYDE Logo"
+                                className="h-full w-full object-contain"
+                            />
+                        </div>
+                    </div>
                     <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
                     <p className="text-slate-400">Join Ryde and start earning</p>
                 </div>
@@ -76,6 +105,7 @@ export default function SignupPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Input
                             label="First Name"
+                            name="firstName"
                             type="text"
                             placeholder="John"
                             icon={<User className="h-4 w-4" />}
@@ -83,6 +113,7 @@ export default function SignupPage() {
                         />
                         <Input
                             label="Last Name"
+                            name="lastName"
                             type="text"
                             placeholder="Doe"
                             icon={<User className="h-4 w-4" />}
@@ -91,6 +122,7 @@ export default function SignupPage() {
                     </div>
                     <Input
                         label="Email Address"
+                        name="email"
                         type="email"
                         placeholder="you@example.com"
                         icon={<Mail className="h-4 w-4" />}
@@ -98,6 +130,7 @@ export default function SignupPage() {
                     />
                     <Input
                         label="Password"
+                        name="password"
                         type="password"
                         placeholder="••••••••"
                         icon={<Lock className="h-4 w-4" />}
@@ -105,6 +138,7 @@ export default function SignupPage() {
                     />
                     <Input
                         label="Confirm Password"
+                        name="confirmPassword"
                         type="password"
                         placeholder="••••••••"
                         icon={<Lock className="h-4 w-4" />}

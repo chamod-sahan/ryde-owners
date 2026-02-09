@@ -7,24 +7,31 @@ import { VehicleTable } from "@/components/dashboard/VehicleTable";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { Button } from "@/components/ui/Button";
 import { DashboardService, KPI, DashboardVehicle } from "@/services/dashboardService";
+import { ProfileService } from "@/services/profileService";
+import { UserResponse } from "@/types/api";
 
 export default function DashboardPage() {
     const [kpis, setKpis] = useState<KPI[]>([]);
     const [vehicles, setVehicles] = useState<DashboardVehicle[]>([]);
     const [recentBookings, setRecentBookings] = useState<any[]>([]);
+    const [user, setUser] = useState<UserResponse | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function loadData() {
             try {
-                const [kpiData, vehicleData, bookingData] = await Promise.all([
+                const [kpiData, vehicleData, bookingData, userData] = await Promise.all([
                     DashboardService.getKPIs(),
                     DashboardService.getTopVehicles(),
                     DashboardService.getRecentBookings(),
+                    ProfileService.getProfile(),
                 ]);
                 setKpis(kpiData || []);
                 setVehicles(vehicleData || []);
                 setRecentBookings(bookingData || []);
+                if (userData.success && userData.data) {
+                    setUser(userData.data);
+                }
             } catch (error) {
                 console.error("Failed to load dashboard data:", error);
             } finally {
@@ -52,7 +59,7 @@ export default function DashboardPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-white tracking-tight">Dashboard</h1>
-                    <p className="text-slate-400 mt-1">Welcome back, Alex. Here's what's happening today.</p>
+                    <p className="text-slate-400 mt-1">Welcome back, {user?.firstName || 'Owner'}. Here's what's happening today.</p>
                 </div>
             </div>
 

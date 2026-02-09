@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Car, Calendar, BarChart3, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Car, Calendar, BarChart3, Settings, LogOut, FileText } from "lucide-react";
 import { AuthService } from "@/services/authService";
 import { ProfileService } from "@/services/profileService";
 import { UserResponse } from "@/types/api";
@@ -80,20 +80,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <div className="flex h-full flex-col p-6">
                     {/* Logo Area */}
                     <div className="mb-10 flex items-center gap-3 px-2">
-                        {user?.logoUrl ? (
-                            <div className="h-10 w-10 overflow-hidden rounded-lg ring-1 ring-white/10">
-                                <Image
-                                    src={user.logoUrl}
-                                    alt="Owner Logo"
-                                    width={40}
-                                    height={40}
-                                    className="h-full w-full object-cover"
-                                />
-                            </div>
-                        ) : (
-                            <div className="h-8 w-8 rounded-lg bg-primary shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
-                        )}
-                        <span className="text-xl font-bold tracking-tight text-white">Ryde<span className="text-primary">.Owner</span></span>
+                        <div className="h-10 w-10 overflow-hidden rounded-lg">
+                            <Image
+                                src="/RYDE_V2-1.png"
+                                alt="RYDE Logo"
+                                width={40}
+                                height={40}
+                                className="h-full w-full object-contain"
+                            />
+                        </div>
+
+                        <span className="text-xl font-bold tracking-tight text-white">
+                            Ryde <span className="text-primary">Supplier</span>
+                        </span>
+
                     </div>
 
                     {/* Navigation */}
@@ -126,6 +126,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                     {/* Bottom Actions */}
                     <div className="mt-auto space-y-2 border-t border-white/5 pt-6">
                         <Link
+                            href="/terms"
+                            className={cn(
+                                "group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors hover:bg-[#2A3447]/50 hover:text-white",
+                                pathname === "/terms" ? "text-primary" : "text-slate-400"
+                            )}
+                            onClick={() => {
+                                if (window.innerWidth < 768) onClose();
+                            }}
+                        >
+                            <FileText className="h-5 w-5 text-slate-500 group-hover:text-white" />
+                            Terms & Conditions
+                        </Link>
+                        <Link
                             href="/dashboard/settings"
                             className={cn(
                                 "group flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors hover:bg-[#2A3447]/50 hover:text-white",
@@ -135,6 +148,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                             <Settings className="h-5 w-5 text-slate-500 group-hover:text-white" />
                             Settings
                         </Link>
+
                         <button
                             onClick={handleLogout}
                             className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-400 transition-colors hover:bg-destructive/10 hover:text-destructive"
